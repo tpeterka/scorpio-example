@@ -1,0 +1,11 @@
+imports:
+    fmt: ./ext/fmt
+    diy: ./ext/diy
+
+git module fmt:
+    url: https://github.com/fmtlib/fmt
+    rev: 8.1.1
+
+git module diy:
+    url: https://github.com/diatomic/diy
+    drop: include/diy/thirdparty/fmt
