@@ -3,11 +3,11 @@
 #include    <diy/master.hpp>
 #include    <diy/decomposition.hpp>
 #include    <diy/assigner.hpp>
-#include    "../opts.h"
+#include    "opts.h"
 
 #include    <dlfcn.h>
 
-#include    "prod-con-mpi.hpp"
+#include    "prod-con.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -24,8 +24,8 @@ int main(int argc, char* argv[])
     float                     prod_frac         = 1.0 / 3.0;      // fraction of world ranks in producer
     size_t                    local_npoints     = 1e6;            // points per block
     size_t                    local_ngrid_dim   = 1e2;            // grid vertices per dim per block
-    std::string               producer_exec     = "./producer-mpi.hx";    // name of producer executable
-    std::string               consumer_exec     = "./consumer-mpi.hx";    // name of consumer executable
+    std::string               producer_exec     = "./producer.so";    // name of producer executable
+    std::string               consumer_exec     = "./consumer.so";    // name of consumer executable
     int                       ntrials           = 1;              // number of trials to run
     bool                      verbose, help;
 

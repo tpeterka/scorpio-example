@@ -1,6 +1,6 @@
 #include <diy/mpi/communicator.hpp>
 #include <thread>
-#include "prod-con-mpi.hpp"
+#include "prod-con.hpp"
 
 using communicator = diy::mpi::communicator;
 
