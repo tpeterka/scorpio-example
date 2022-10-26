@@ -2,76 +2,113 @@
 #include <thread>
 #include "prod-con.hpp"
 
-using communicator = diy::mpi::communicator;
+#include <pio.h>
+
+// TODO: does the consumer need this?
+#define NDIM 1
+#define DIM_LEN 1024
+#define DIM_NAME "x"
+#define VAR_NAME "foo"
+#define START_DATA_VAL 100
 
 extern "C"
 {
 void consumer_f (communicator& local, const std::vector<communicator>& intercomms,
                  std::mutex& exclusive, bool shared,
                  std::string prefix,
-                 int threads, int mem_blocks,
-                 Bounds domain,
-                 size_t global_num_points,
-                 int dim,
-                 int con_nblocks,
-                 int prod1_nblocks,
-                 int prod2_blocks);
+                 int metadata, int passthru);
 }
 
 void consumer_f (communicator& local, const std::vector<communicator>& intercomms,
                  std::mutex& exclusive, bool shared,
                  std::string prefix,
-                 int threads, int mem_blocks,
-                 Bounds domain,
-                 size_t global_num_points,
-                 int dim,
-                 int con_nblocks,
-                 int prod1_nblocks,
-                 int prod2_nblocks)
+                 int metadata, int passthru)
 {
+    diy::mpi::communicator local_(local);
+
+    // PIO defs
+    int my_rank = local_.rank();
+    int ntasks  = local_.size();
+    int ioproc_stride = 1;
+    int ioproc_start = 0;
+    int iosysid;
+    int ncid;
+    int format = PIO_IOTYPE_NETCDF4P;
+    int *buffer = NULL;
+    PIO_Offset elements_per_pe;
+    PIO_Offset *compdof = NULL;
+    int dim_len[1] = {DIM_LEN};
+    int ioid;
+    int varid;
+
+    // debug
+    fmt::print(stderr, "consumer: local comm rank {} size {}\n", my_rank, ntasks);
+
+    // VOL plugin and properties
+    std::unique_ptr<l5::DistMetadataVOL> vol_plugin{};
+    hid_t plist;
+
+    vol_plugin = std::unique_ptr<l5::DistMetadataVOL>(new l5::DistMetadataVOL(local, intercomms));
+    plist = H5Pcreate(H5P_FILE_ACCESS);
+
+    if (passthru)
+        H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
+
+    l5::H5VOLProperty vol_prop(*vol_plugin);
+    if (!getenv("HDF5_VOL_CONNECTOR"))
+        vol_prop.apply(plist);
+
+    // set lowfive properties
+    LowFive::LocationPattern all { "example1.nc", "*"};
+    if (passthru)
+        vol_plugin->passthru.push_back(all);
+    if (metadata)
+        vol_plugin->memory.push_back(all);
+
+    // debug
+    fmt::print(stderr, "consumer 1:\n");
+
     // wait for data to be ready
     if (!shared)
     {
         for (auto& intercomm: intercomms)
-            intercomm.barrier();
+            diy_comm(intercomm).barrier();
     }
     else
     {
         int a;                                  // it doesn't matter what we receive, for synchronization only
         for (auto& intercomm : intercomms)
-            intercomm.recv(local.rank(), 0, a);
+            diy_comm(intercomm).recv(local_.rank(), 0, a);
     }
 
-    // diy setup for the consumer
-    diy::FileStorage                con_storage(prefix);
-    diy::Master                     con_master(local,
-            threads,
-            mem_blocks,
-            &Block::create,
-            &Block::destroy,
-            &con_storage,
-            &Block::save,
-            &Block::load);
-    size_t local_num_points = global_num_points / con_nblocks;
-    AddBlock                        con_create(con_master, local_num_points, global_num_points, con_nblocks);
-    diy::ContiguousAssigner         con_assigner(local.size(), con_nblocks);
-    diy::RegularDecomposer<Bounds>  con_decomposer(dim, domain, con_nblocks);
-    con_decomposer.decompose(local.rank(), con_assigner, con_create);
-    diy::RegularDecomposer<Bounds>  prod1_decomposer(dim, domain, prod1_nblocks);
+    // debug
+    fmt::print(stderr, "consumer 1:\n");
 
-    // receive the grid data
-    con_master.foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
-            { b->recv_block_grid(cp, local, intercomms.front(), prod1_decomposer); });
+    // init PIO
+    PIOc_Init_Intracomm(local, ntasks, ioproc_stride, ioproc_start, PIO_REARR_SUBSET, &iosysid);
 
-    // receive the particle data
-    if (prod2_nblocks)
-    {
-        diy::RegularDecomposer<Bounds>  prod2_decomposer(dim, domain, prod2_nblocks);
-        con_master.foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
-                { b->recv_block_points(cp, global_num_points, con_nblocks, local, intercomms.back(), prod2_decomposer); });
-    }
-    else
-        con_master.foreach([&](Block* b, const diy::Master::ProxyWithLink& cp)
-                { b->recv_block_points(cp, global_num_points, con_nblocks, local, intercomms.back(), prod1_decomposer); });
+    // decomposition TODO: does the consumer need this?
+    elements_per_pe = DIM_LEN / ntasks;
+    compdof = (MPI_Offset*)(malloc(elements_per_pe * sizeof(PIO_Offset)));
+
+    for (int i = 0; i < elements_per_pe; i++)
+        compdof[i] = (my_rank * elements_per_pe + i + 1) + 10;
+
+    PIOc_InitDecomp(iosysid, PIO_INT, NDIM, dim_len, (PIO_Offset)elements_per_pe, compdof, &ioid, NULL, NULL, NULL);
+    free(compdof);
+
+    // open file for reading
+    PIOc_openfile(iosysid, &ncid, &format, "example1.nc", PIO_NOWRITE);
+
+    // read the data
+    buffer = (int*)(malloc(elements_per_pe * sizeof(int)));
+    PIOc_inq_varid(ncid, VAR_NAME, &varid);
+    PIOc_read_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, buffer);
+    free(buffer);
+
+    // clean up
+    PIOc_closefile(ncid);
+    PIOc_freedecomp(iosysid, ioid);
+    PIOc_finalize(iosysid);
 }
 

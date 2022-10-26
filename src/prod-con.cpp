@@ -1,9 +1,10 @@
-#include    <thread>
 
 #include    <diy/master.hpp>
 #include    <diy/decomposition.hpp>
 #include    <diy/assigner.hpp>
 #include    "opts.h"
+
+#include    <lowfive/log.hpp>
 
 #include    <dlfcn.h>
 
@@ -11,19 +12,15 @@
 
 int main(int argc, char* argv[])
 {
-    int   dim = DIM;
-
     diy::mpi::environment     env(argc, argv, MPI_THREAD_MULTIPLE);
     diy::mpi::communicator    world;
 
     int                       mem_blocks        = -1;             // all blocks in memory
     int                       threads           = 1;              // no multithreading
-    std::string               prefix            = "./DIY.XXXXXX"; // for saving block files out of core
-    // opts does not handle bool correctly, using int instead
+    int                       metadata          = 1;              // build in-memory metadata
+    int                       passthru          = 0;              // write file to disk
     bool                      shared            = false;          // producer and consumer run on the same ranks
-    float                     prod_frac         = 1.0 / 3.0;      // fraction of world ranks in producer
-    size_t                    local_npoints     = 1e6;            // points per block
-    size_t                    local_ngrid_dim   = 1e2;            // grid vertices per dim per block
+    float                     prod_frac         = 1.0 / 2.0;      // fraction of world ranks in producer
     std::string               producer_exec     = "./producer.so";    // name of producer executable
     std::string               consumer_exec     = "./consumer.so";    // name of consumer executable
     int                       ntrials           = 1;              // number of trials to run
@@ -33,10 +30,10 @@ int main(int argc, char* argv[])
     using namespace opts;
     Options ops;
     ops
-        >> Option('n', "number",    local_npoints,  "number of points per block")
         >> Option('t', "thread",    threads,        "number of threads")
         >> Option(     "memblks",   mem_blocks,     "number of blocks to keep in memory")
-        >> Option(     "prefix",    prefix,         "prefix for external storage")
+        >> Option('m', "memory",    metadata,       "build and use in-memory metadata")
+        >> Option('f', "file",      passthru,       "write file to disk")
         >> Option('p', "p_frac",    prod_frac,      "fraction of world ranks in producer")
         >> Option('s', "shared",    shared,         "share ranks between producer and consumer (-p ignored)")
         >> Option('r', "prod_exec", producer_exec,  "name of producer executable")
@@ -57,26 +54,11 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    // lowfive logging
+    LowFive::create_logger("trace");
+
     int producer_ranks = world.size() * prod_frac;
-
-    // default global data bounds
-    Bounds domain { dim };
-    // weak scaling wrt producer ranks
-    size_t global_ngrid_dim = powf(producer_ranks * powf(local_ngrid_dim, dim), 1.0 / (float)dim);
-    if (world.rank() == 0)
-        fmt::print(stderr, "producer ranks {} local_npts {} global_npts {} local_ngrid {} global_ngrid {}\n",
-                producer_ranks, local_npoints, local_npoints * producer_ranks, pow(local_ngrid_dim, dim), pow(global_ngrid_dim, dim));
-    for (auto i = 0; i < dim; i++)
-    {
-        domain.min[i] = 0;
-        domain.max[i] = global_ngrid_dim - 1;
-    }
-
-    // blocks, ranks, number of points (one block per rank)
-    int prod_nblocks        = producer_ranks;
     bool producer           = world.rank() < producer_ranks;
-    int con_nblocks         = world.size() - prod_nblocks;
-    size_t global_npoints   = prod_nblocks * local_npoints;         // all block have same number of points
 
     if (!shared && world.rank() == 0)
         fmt::print(stderr, "space partitioning: producer_ranks: {} consumer_ranks: {}\n", producer_ranks, world.size() - producer_ranks);
@@ -100,26 +82,26 @@ int main(int argc, char* argv[])
         fmt::print(stderr, "Couldn't find consumer_f\n");
 
     // communicator management
-    using communicator = diy::mpi::communicator;
+    using communicator = MPI_Comm;
     MPI_Comm intercomm_;
     std::vector<communicator> producer_intercomms, consumer_intercomms;
     communicator p_c_intercomm;
     communicator local;
     communicator producer_comm, consumer_comm;
-    producer_comm.duplicate(world);
-    consumer_comm.duplicate(world);
+    MPI_Comm_dup(world, &producer_comm);
+    MPI_Comm_dup(world, &consumer_comm);
 
     if (shared)
     {
-        producer_comm.duplicate(world);
-        consumer_comm.duplicate(world);
-        p_c_intercomm.duplicate(world);
+        MPI_Comm_dup(world, &producer_comm);
+        MPI_Comm_dup(world, &consumer_comm);
+        MPI_Comm_dup(world, &p_c_intercomm);
         producer_intercomms.push_back(p_c_intercomm);
         consumer_intercomms.push_back(p_c_intercomm);
     }
     else
     {
-        local = world.split(producer);
+        MPI_Comm_split(world, producer ? 0 : 1, 0, &local);
 
         if (producer)
         {
@@ -141,46 +123,36 @@ int main(int argc, char* argv[])
 
     auto producer_f = [&]()
     {
-        ((void (*) (communicator&, const std::vector<communicator>&,
-                    std::mutex&, bool,
-                    std::string,
-                    int, int,
-                    Bounds, int, int,
-                    int, int, size_t)) (producer_f_))(producer_comm,
-                                                      producer_intercomms,
-                                                      exclusive,
-                                                      shared,
-                                                      prefix,
-                                                      threads,
-                                                      mem_blocks,
-                                                      domain,
-                                                      prod_nblocks,
-                                                      con_nblocks,
-                                                      0,
-                                                      dim,
-                                                      local_npoints);
+        ((void (*) (communicator&,
+                    const std::vector<communicator>&,
+                    std::mutex&,
+                    bool,
+                    int,
+                    int))
+                    (producer_f_))(
+                        producer_comm,
+                        producer_intercomms,
+                        exclusive,
+                        shared,
+                        metadata,
+                        passthru);
     };
 
     auto consumer_f = [&]()
     {
-        ((void (*) (communicator&, const std::vector<communicator>&,
-                    std::mutex&, bool,
-                    std::string,
-                    int, int,
-                    Bounds, size_t, int, int,
-                    int, int))(consumer_f_))(consumer_comm,
-                                        consumer_intercomms,
-                                        exclusive,
-                                        shared,
-                                        prefix,
-                                        threads,
-                                        mem_blocks,
-                                        domain,
-                                        global_npoints,
-                                        dim,
-                                        con_nblocks,
-                                        prod_nblocks,
-                                        0);
+        ((void (*) (communicator&,
+                    const std::vector<communicator>&,
+                    std::mutex&,
+                    bool,
+                    int,
+                    int))
+                    (consumer_f_))(
+                        consumer_comm,
+                        consumer_intercomms,
+                        exclusive,
+                        shared,
+                        metadata,
+                        passthru);
     };
 
     std::vector<double> times(ntrials);     // elapsed time for each trial

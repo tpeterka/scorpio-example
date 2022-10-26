@@ -49,7 +49,8 @@ else                        ()
     message                 ("LOWFIVE_DIST_LIBRARY = " ${LOWFIVE_DIST_LIBRARY})
 endif                       ()
 set                         (libraries ${libraries} ${LOWFIVE_LIBRARY} ${LOWFIVE_DIST_LIBRARY})
-include_directories         (SYSTEM ${LOWFIVE_INCLUDE_DIR})
+include_directories         (SYSTEM ${LOWFIVE_INCLUDE_DIR}
+                            SYSTEM ${LOWFIVE_INCLUDE_DIR}/diy)
 
 # HDF5
 if                          (HDF5_LIBRARY AND HDF5_HL_LIBRARY AND Z_LIBRARY)
@@ -69,11 +70,49 @@ endif                       ()
 set                         (libraries ${libraries} ${HDF5_LIBRARY})
 include_directories         (SYSTEM ${HDF5_INCLUDE_DIR})
 
+# Scorpio
+if                          (SCORPIO_LIBRARY AND SCORPIO_INCLUDE_DIR AND SCORPIO_CONFIG_INCLUDE_DIR)
+    message                 ("SCORPIO_LIBRARY = " ${SCORPIO_LIBRARY})
+    message                 ("SCORPIO_INCLUDE_DIR = " ${SCORPIO_INCLUDE_DIR})
+    message                 ("SCORPIO_CONFIG_INCLUDE_DIR = " ${SCORPIO_CONFIG_INCLUDE_DIR})
+else                        ()
+    message                 (FATAL_ERROR "SCORPIO_INCLUDE_DIR and SCORPIO_CONFIG_INCLUDE_DIR and SCORPIO_LIBRARY need to be defined")
+endif                       ()
+set                         (libraries ${libraries} ${SCORPIO_LIBRARY})
+include_directories         (SYSTEM ${SCORPIO_INCLUDE_DIR} ${SCORPIO_CONFIG_INCLUDE_DIR})
+
+# GPTL
+if                          (GPTL_LIBRARY AND GPTL_INCLUDE_DIR)
+    message                 ("GPTL_LIBRARY = " ${GPTL_LIBRARY})
+    message                 ("GPTL_INCLUDE_DIR = " ${GPTL_INCLUDE_DIR})
+else                        ()
+    message                 (FATAL_ERROR "GPTL_INCLUDE_DIR and GPTL_LIBRARY need to be defined")
+endif                       ()
+set                         (libraries ${libraries} ${GPTL_LIBRARY})
+include_directories         (SYSTEM ${GPTL_INCLUDE_DIR})
+
+# NetCDF
+if                          (NETCDF_INCLUDE_DIR AND NETCDF_LIBRARY)
+    message                 ("NETCDF_LIBRARY = " ${NETCDF_LIBRARY})
+    message                 ("NETCDF_INCLUDE_DIR = " ${NETCDF_INCLUDE_DIR})
+else                        ()
+    message                 (FATAL_ERROR "NETCDF_INCLUDE_DIR and NETCDF_LIBRARY need to be defined")
+endif                       ()
+set                         (libraries ${libraries} ${NETCDF_LIBRARY})
+include_directories         (SYSTEM ${NETCDF_INCLUDE_DIR})
+
+# pnetcdf
+if                          (PNETCDF_INCLUDE_DIR)
+    message                 ("PNETCDF_INCLUDE_DIR = " ${PNETCDF_INCLUDE_DIR})
+else                        ()
+    message                 (FATAL_ERROR "PNETCDF_INCLUDE_DIR needs to be defined")
+endif                       ()
+include_directories         (SYSTEM ${PNETCDF_INCLUDE_DIR})
+
 # Include dirs
 set                         (CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem")
 include_directories         (${CMAKE_CURRENT_SOURCE_DIR}/include
-                            SYSTEM ${MPI_C_INCLUDE_PATH}
-                            SYSTEM ${LOWFIVE_INCLUDE_DIR}/diy)
+                            SYSTEM ${MPI_C_INCLUDE_PATH})
 
 # Libraries
 set                         (libraries
