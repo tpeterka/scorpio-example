@@ -82,7 +82,7 @@ void consumer_f (communicator& local, const std::vector<communicator>& intercomm
     }
 
     // debug
-    fmt::print(stderr, "consumer 1:\n");
+    fmt::print(stderr, "consumer 2:\n");
 
     // init PIO
     PIOc_Init_Intracomm(local, ntasks, ioproc_stride, ioproc_start, PIO_REARR_SUBSET, &iosysid);
