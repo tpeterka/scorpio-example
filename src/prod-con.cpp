@@ -1,4 +1,3 @@
-
 #include    <diy/master.hpp>
 #include    <diy/decomposition.hpp>
 #include    <diy/assigner.hpp>
@@ -59,6 +58,8 @@ int main(int argc, char* argv[])
 
     int producer_ranks = world.size() * prod_frac;
     bool producer           = world.rank() < producer_ranks;
+    if (world.size() == 1)
+        shared = true;
 
     if (!shared && world.rank() == 0)
         fmt::print(stderr, "space partitioning: producer_ranks: {} consumer_ranks: {}\n", producer_ranks, world.size() - producer_ranks);
@@ -171,11 +172,9 @@ int main(int argc, char* argv[])
                 consumer_f();
         } else
         {
-            auto producer_thread = std::thread(producer_f);
-            auto consumer_thread = std::thread(consumer_f);
-
-            producer_thread.join();
-            consumer_thread.join();
+            // not multithreading, just serializing
+            producer_f();
+            consumer_f();
         }
 
         // timing

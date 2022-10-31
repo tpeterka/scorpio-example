@@ -40,6 +40,7 @@ void producer_f (
     int my_rank = local_.rank();
     int ntasks  = local_.size();
     int format = PIO_IOTYPE_NETCDF4P;
+//     int format = PIO_IOTYPE_HDF5;
     int ioproc_stride = 1;
     int ioproc_start = 0;
     int dimid;
@@ -57,24 +58,50 @@ void producer_f (
 
     // VOL plugin and properties
     std::unique_ptr<l5::DistMetadataVOL> vol_plugin {};
+    std::unique_ptr<l5::MetadataVOL> shared_vol_plugin {};      // for single process, MetadataVOL test
     hid_t plist;
 
-    vol_plugin = std::unique_ptr<l5::DistMetadataVOL>(new l5::DistMetadataVOL(local, intercomms));
-    plist = H5Pcreate(H5P_FILE_ACCESS);
+    if (shared)                 // single process, MetadataVOL test
+    {
+        fmt::print(stderr, "producer: using shared mode MetadataVOL plugin\n");
+        shared_vol_plugin = std::unique_ptr<l5::MetadataVOL>(new l5::MetadataVOL);
+        plist = H5Pcreate(H5P_FILE_ACCESS);
 
-    if (passthru)
-        H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
+        if (passthru)
+            H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
 
-    l5::H5VOLProperty vol_prop(*vol_plugin);
-    if (!getenv("HDF5_VOL_CONNECTOR"))
-        vol_prop.apply(plist);
+        l5::H5VOLProperty vol_prop(*shared_vol_plugin);
+        if (!getenv("HDF5_VOL_CONNECTOR"))
+            vol_prop.apply(plist);
 
-    // set lowfive properties
-    LowFive::LocationPattern all { "example1.nc", "*"};
-    if (passthru)
-        vol_plugin->passthru.push_back(all);
-    if (metadata)
-        vol_plugin->memory.push_back(all);
+        // set lowfive properties
+        LowFive::LocationPattern all { "example1.nc", "*"};
+        if (passthru)
+            shared_vol_plugin->passthru.push_back(all);
+        if (metadata)
+            shared_vol_plugin->memory.push_back(all);
+        shared_vol_plugin->set_keep(true);
+    }
+    else                        // normal multiprocess, DistMetadataVOL plugin
+    {
+        vol_plugin = std::unique_ptr<l5::DistMetadataVOL>(new l5::DistMetadataVOL(local, intercomms));
+        plist = H5Pcreate(H5P_FILE_ACCESS);
+
+        if (passthru)
+            H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
+
+        l5::H5VOLProperty vol_prop(*vol_plugin);
+        if (!getenv("HDF5_VOL_CONNECTOR"))
+            vol_prop.apply(plist);
+
+        // set lowfive properties
+        LowFive::LocationPattern all { "example1.nc", "*"};
+        if (passthru)
+            vol_plugin->passthru.push_back(all);
+        if (metadata)
+            vol_plugin->memory.push_back(all);
+        vol_plugin->set_keep(true);
+    }
 
     // set Scorpio log level
 //     PIOc_set_log_level(5);
@@ -111,30 +138,22 @@ void producer_f (
     free(buffer);
 
     // debugging
-//     vol_plugin.print_files();
-
-    // debug
-    fmt::print(stderr, "producer 1:\n");
+    if (shared)
+    {
+        fmt::print(stderr, "Producer metadata hierarchy:\n");
+        shared_vol_plugin->print_files();
+    }
 
     // clean up
     PIOc_closefile(ncid);
     PIOc_freedecomp(iosysid, ioid);
     PIOc_finalize(iosysid);
-
-    // debug
-    fmt::print(stderr, "producer 2:\n");
+    H5Pclose(plist);
 
     // signal the consumer that data are ready
-    if (!shared)
+    if (passthru && !metadata && !shared)
     {
         for (auto& intercomm: intercomms)
             diy_comm(intercomm).barrier();
-    }
-    else
-    {
-        local_.barrier();
-        int a = 0;                          // it doesn't matter what we send, for synchronization only
-        for (auto& intercomm : intercomms)
-            diy_comm(intercomm).send(local_.rank(), 0, a);
     }
 }

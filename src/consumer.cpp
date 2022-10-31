@@ -4,7 +4,6 @@
 
 #include <pio.h>
 
-// TODO: does the consumer need this?
 #define NDIM 1
 #define DIM_LEN 1024
 #define DIM_NAME "x"
@@ -44,50 +43,71 @@ void consumer_f (communicator& local, const std::vector<communicator>& intercomm
     // debug
     fmt::print(stderr, "consumer: local comm rank {} size {}\n", my_rank, ntasks);
 
-    // VOL plugin and properties
-    std::unique_ptr<l5::DistMetadataVOL> vol_plugin{};
-    hid_t plist;
-
-    vol_plugin = std::unique_ptr<l5::DistMetadataVOL>(new l5::DistMetadataVOL(local, intercomms));
-    plist = H5Pcreate(H5P_FILE_ACCESS);
-
-    if (passthru)
-        H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
-
-    l5::H5VOLProperty vol_prop(*vol_plugin);
-    if (!getenv("HDF5_VOL_CONNECTOR"))
-        vol_prop.apply(plist);
-
-    // set lowfive properties
-    LowFive::LocationPattern all { "example1.nc", "*"};
-    if (passthru)
-        vol_plugin->passthru.push_back(all);
-    if (metadata)
-        vol_plugin->memory.push_back(all);
-
-    // debug
-    fmt::print(stderr, "consumer 1:\n");
-
     // wait for data to be ready
-    if (!shared)
+    if (passthru && !metadata && !shared)
     {
         for (auto& intercomm: intercomms)
             diy_comm(intercomm).barrier();
     }
-    else
+
+    // VOL plugin and properties
+    std::unique_ptr<l5::DistMetadataVOL> vol_plugin{};
+    std::unique_ptr<l5::MetadataVOL> shared_vol_plugin {};      // for single process, MetadataVOL test
+    hid_t plist;
+
+    if (shared)                 // single process, MetadataVOL test
     {
-        int a;                                  // it doesn't matter what we receive, for synchronization only
-        for (auto& intercomm : intercomms)
-            diy_comm(intercomm).recv(local_.rank(), 0, a);
+        fmt::print(stderr, "consumer: using shared mode MetadataVOL plugin\n");
+        shared_vol_plugin = std::unique_ptr<l5::MetadataVOL>(new l5::MetadataVOL);
+        plist = H5Pcreate(H5P_FILE_ACCESS);
+
+        if (passthru)
+            H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
+
+        l5::H5VOLProperty vol_prop(*shared_vol_plugin);
+        if (!getenv("HDF5_VOL_CONNECTOR"))
+            vol_prop.apply(plist);
+
+        // set lowfive properties
+        LowFive::LocationPattern all { "example1.nc", "*"};
+        if (passthru)
+            shared_vol_plugin->passthru.push_back(all);
+        if (metadata)
+            shared_vol_plugin->memory.push_back(all);
+        shared_vol_plugin->set_keep(true);
+    }
+    else                            // normal multiprocess, DistMetadataVOL plugin
+    {
+        vol_plugin = std::unique_ptr<l5::DistMetadataVOL>(new l5::DistMetadataVOL(local, intercomms));
+        plist = H5Pcreate(H5P_FILE_ACCESS);
+
+        if (passthru)
+            H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
+
+        l5::H5VOLProperty vol_prop(*vol_plugin);
+        if (!getenv("HDF5_VOL_CONNECTOR"))
+            vol_prop.apply(plist);
+
+        // set lowfive properties
+        LowFive::LocationPattern all { "example1.nc", "*"};
+        if (passthru)
+            vol_plugin->passthru.push_back(all);
+        if (metadata)
+            vol_plugin->memory.push_back(all);
+        vol_plugin->set_keep(true);
     }
 
-    // debug
-    fmt::print(stderr, "consumer 2:\n");
+    // debugging
+    if (shared)
+    {
+        fmt::print(stderr, "Consumer metadata hierarchy:\n");
+        shared_vol_plugin->print_files();
+    }
 
     // init PIO
     PIOc_Init_Intracomm(local, ntasks, ioproc_stride, ioproc_start, PIO_REARR_SUBSET, &iosysid);
 
-    // decomposition TODO: does the consumer need this?
+    // decomposition
     elements_per_pe = DIM_LEN / ntasks;
     compdof = (MPI_Offset*)(malloc(elements_per_pe * sizeof(PIO_Offset)));
 
@@ -102,13 +122,14 @@ void consumer_f (communicator& local, const std::vector<communicator>& intercomm
 
     // read the data
     buffer = (int*)(malloc(elements_per_pe * sizeof(int)));
-    PIOc_inq_varid(ncid, VAR_NAME, &varid);
-    PIOc_read_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, buffer);
+//     PIOc_inq_varid(ncid, VAR_NAME, &varid);
+//     PIOc_read_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, buffer);
     free(buffer);
 
     // clean up
     PIOc_closefile(ncid);
     PIOc_freedecomp(iosysid, ioid);
     PIOc_finalize(iosysid);
+    H5Pclose(plist);
 }
 
