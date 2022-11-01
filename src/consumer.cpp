@@ -12,16 +12,22 @@
 
 extern "C"
 {
-void consumer_f (communicator& local, const std::vector<communicator>& intercomms,
-                 std::mutex& exclusive, bool shared,
-                 std::string prefix,
-                 int metadata, int passthru);
+void consumer_f (
+        communicator& local,
+        const std::vector<communicator>& intercomms,
+        bool shared,
+        int metadata,
+        int passthru,
+        const std::unique_ptr<l5::MetadataVOL>& shared_vol_plugin);      // for single process, MetadataVOL test
 }
 
-void consumer_f (communicator& local, const std::vector<communicator>& intercomms,
-                 std::mutex& exclusive, bool shared,
-                 std::string prefix,
-                 int metadata, int passthru)
+void consumer_f (
+        communicator& local,
+        const std::vector<communicator>& intercomms,
+        bool shared,
+        int metadata,
+        int passthru,
+        const std::unique_ptr<l5::MetadataVOL>& shared_vol_plugin)      // for single process, MetadataVOL test
 {
     diy::mpi::communicator local_(local);
 
@@ -52,30 +58,10 @@ void consumer_f (communicator& local, const std::vector<communicator>& intercomm
 
     // VOL plugin and properties
     std::unique_ptr<l5::DistMetadataVOL> vol_plugin{};
-    std::unique_ptr<l5::MetadataVOL> shared_vol_plugin {};      // for single process, MetadataVOL test
     hid_t plist;
 
-    if (shared)                 // single process, MetadataVOL test
-    {
-        fmt::print(stderr, "consumer: using shared mode MetadataVOL plugin\n");
-        shared_vol_plugin = std::unique_ptr<l5::MetadataVOL>(new l5::MetadataVOL);
-        plist = H5Pcreate(H5P_FILE_ACCESS);
-
-        if (passthru)
-            H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
-
-        l5::H5VOLProperty vol_prop(*shared_vol_plugin);
-        if (!getenv("HDF5_VOL_CONNECTOR"))
-            vol_prop.apply(plist);
-
-        // set lowfive properties
-        LowFive::LocationPattern all { "example1.nc", "*"};
-        if (passthru)
-            shared_vol_plugin->passthru.push_back(all);
-        if (metadata)
-            shared_vol_plugin->memory.push_back(all);
-        shared_vol_plugin->set_keep(true);
-    }
+    if (shared)                     // single process, MetadataVOL test
+        fmt::print(stderr, "consumer: using shared mode MetadataVOL plugin created by prod-con\n");
     else                            // normal multiprocess, DistMetadataVOL plugin
     {
         vol_plugin = std::unique_ptr<l5::DistMetadataVOL>(new l5::DistMetadataVOL(local, intercomms));
@@ -94,15 +80,14 @@ void consumer_f (communicator& local, const std::vector<communicator>& intercomm
             vol_plugin->passthru.push_back(all);
         if (metadata)
             vol_plugin->memory.push_back(all);
-        vol_plugin->set_keep(true);
     }
 
-    // debugging
-    if (shared)
-    {
-        fmt::print(stderr, "Consumer metadata hierarchy:\n");
-        shared_vol_plugin->print_files();
-    }
+//     // debugging
+//     if (shared)
+//     {
+//         fmt::print(stderr, "Consumer metadata hierarchy:\n");
+//         shared_vol_plugin->print_files();
+//     }
 
     // init PIO
     PIOc_Init_Intracomm(local, ntasks, ioproc_stride, ioproc_start, PIO_REARR_SUBSET, &iosysid);
@@ -122,14 +107,15 @@ void consumer_f (communicator& local, const std::vector<communicator>& intercomm
 
     // read the data
     buffer = (int*)(malloc(elements_per_pe * sizeof(int)));
-//     PIOc_inq_varid(ncid, VAR_NAME, &varid);
-//     PIOc_read_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, buffer);
+    PIOc_inq_varid(ncid, VAR_NAME, &varid);
+    PIOc_read_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, buffer);
     free(buffer);
 
     // clean up
     PIOc_closefile(ncid);
     PIOc_freedecomp(iosysid, ioid);
     PIOc_finalize(iosysid);
-    H5Pclose(plist);
+    if (!shared)
+        H5Pclose(plist);
 }
 

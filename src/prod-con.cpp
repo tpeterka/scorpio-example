@@ -83,7 +83,6 @@ int main(int argc, char* argv[])
         fmt::print(stderr, "Couldn't find consumer_f\n");
 
     // communicator management
-    using communicator = MPI_Comm;
     MPI_Comm intercomm_;
     std::vector<communicator> producer_intercomms, consumer_intercomms;
     communicator p_c_intercomm;
@@ -118,7 +117,30 @@ int main(int argc, char* argv[])
         }
     }
 
-    std::mutex exclusive;
+    // shared MetadataVol plugin
+    std::unique_ptr<l5::MetadataVOL> shared_vol_plugin {};
+    hid_t plist;
+    if (shared)
+    {
+        fmt::print(stderr, "prod-con: creating new shared mode MetadataVOL plugin\n");
+        shared_vol_plugin = std::unique_ptr<l5::MetadataVOL>(new l5::MetadataVOL);
+        plist = H5Pcreate(H5P_FILE_ACCESS);
+
+        if (passthru)
+            H5Pset_fapl_mpio(plist, world, MPI_INFO_NULL);
+
+        l5::H5VOLProperty vol_prop(*shared_vol_plugin);
+        if (!getenv("HDF5_VOL_CONNECTOR"))
+            vol_prop.apply(plist);
+
+        // set lowfive properties
+        LowFive::LocationPattern all { "example1.nc", "*"};
+        if (passthru)
+            shared_vol_plugin->passthru.push_back(all);
+        if (metadata)
+            shared_vol_plugin->memory.push_back(all);
+        shared_vol_plugin->set_keep(true);
+    }
 
     // declare lambdas for the tasks
 
@@ -126,34 +148,34 @@ int main(int argc, char* argv[])
     {
         ((void (*) (communicator&,
                     const std::vector<communicator>&,
-                    std::mutex&,
                     bool,
                     int,
-                    int))
+                    int,
+                    const std::unique_ptr<l5::MetadataVOL>&))
                     (producer_f_))(
                         producer_comm,
                         producer_intercomms,
-                        exclusive,
                         shared,
                         metadata,
-                        passthru);
+                        passthru,
+                        shared_vol_plugin);
     };
 
     auto consumer_f = [&]()
     {
         ((void (*) (communicator&,
                     const std::vector<communicator>&,
-                    std::mutex&,
                     bool,
                     int,
-                    int))
+                    int,
+                    const std::unique_ptr<l5::MetadataVOL>&))
                     (consumer_f_))(
                         consumer_comm,
                         consumer_intercomms,
-                        exclusive,
                         shared,
                         metadata,
-                        passthru);
+                        passthru,
+                        shared_vol_plugin);
     };
 
     std::vector<double> times(ntrials);     // elapsed time for each trial
@@ -184,6 +206,9 @@ int main(int argc, char* argv[])
         if (world.rank() == 0)
             fmt::print(stderr, "Elapsed time for trial {}\t\t{:.4f} s.\n", i, times[i]);
     }
+
+    if (shared)
+        H5Pclose(plist);
 
     // timing stats
     double mean_time    = sum_time / ntrials;

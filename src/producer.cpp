@@ -20,19 +20,19 @@ extern "C" {
 void producer_f (
         communicator& local,
         const std::vector<communicator>& intercomms,
-        std::mutex& exclusive,
         bool shared,
         int metadata,
-        int passthru);
+        int passthru,
+        const std::unique_ptr<l5::MetadataVOL>& shared_vol_plugin);      // for single process, MetadataVOL test
 }
 
 void producer_f (
         communicator& local,
         const std::vector<communicator>& intercomms,
-        std::mutex& exclusive,
         bool shared,
         int metadata,
-        int passthru)
+        int passthru,
+        const std::unique_ptr<l5::MetadataVOL>& shared_vol_plugin)      // for single process, MetadataVOL test
 {
     diy::mpi::communicator local_(local);
 
@@ -58,30 +58,10 @@ void producer_f (
 
     // VOL plugin and properties
     std::unique_ptr<l5::DistMetadataVOL> vol_plugin {};
-    std::unique_ptr<l5::MetadataVOL> shared_vol_plugin {};      // for single process, MetadataVOL test
     hid_t plist;
 
     if (shared)                 // single process, MetadataVOL test
-    {
-        fmt::print(stderr, "producer: using shared mode MetadataVOL plugin\n");
-        shared_vol_plugin = std::unique_ptr<l5::MetadataVOL>(new l5::MetadataVOL);
-        plist = H5Pcreate(H5P_FILE_ACCESS);
-
-        if (passthru)
-            H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
-
-        l5::H5VOLProperty vol_prop(*shared_vol_plugin);
-        if (!getenv("HDF5_VOL_CONNECTOR"))
-            vol_prop.apply(plist);
-
-        // set lowfive properties
-        LowFive::LocationPattern all { "example1.nc", "*"};
-        if (passthru)
-            shared_vol_plugin->passthru.push_back(all);
-        if (metadata)
-            shared_vol_plugin->memory.push_back(all);
-        shared_vol_plugin->set_keep(true);
-    }
+        fmt::print(stderr, "producer: using shared mode MetadataVOL plugin created by prod-con\n");
     else                        // normal multiprocess, DistMetadataVOL plugin
     {
         vol_plugin = std::unique_ptr<l5::DistMetadataVOL>(new l5::DistMetadataVOL(local, intercomms));
@@ -100,7 +80,6 @@ void producer_f (
             vol_plugin->passthru.push_back(all);
         if (metadata)
             vol_plugin->memory.push_back(all);
-        vol_plugin->set_keep(true);
     }
 
     // set Scorpio log level
@@ -138,17 +117,18 @@ void producer_f (
     free(buffer);
 
     // debugging
-    if (shared)
-    {
-        fmt::print(stderr, "Producer metadata hierarchy:\n");
-        shared_vol_plugin->print_files();
-    }
+//     if (shared)
+//     {
+//         fmt::print(stderr, "Producer metadata hierarchy:\n");
+//         shared_vol_plugin->print_files();
+//     }
 
     // clean up
     PIOc_closefile(ncid);
     PIOc_freedecomp(iosysid, ioid);
     PIOc_finalize(iosysid);
-    H5Pclose(plist);
+    if (!shared)
+        H5Pclose(plist);
 
     // signal the consumer that data are ready
     if (passthru && !metadata && !shared)
