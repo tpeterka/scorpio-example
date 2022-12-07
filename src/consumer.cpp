@@ -44,7 +44,7 @@ void consumer_f (
     PIO_Offset *compdof = NULL;
     int dim_len[1] = {DIM_LEN};
     int ioid;
-    int varid;
+    int varid = -1;
 
     // debug
     fmt::print(stderr, "consumer: local comm rank {} size {}\n", my_rank, ntasks);
@@ -102,14 +102,37 @@ void consumer_f (
     PIOc_InitDecomp(iosysid, PIO_INT, NDIM, dim_len, (PIO_Offset)elements_per_pe, compdof, &ioid, NULL, NULL, NULL);
     free(compdof);
 
+    // debug
+    fmt::print(stderr, "*** consumer before opening file ***\n");
+
     // open file for reading
     PIOc_openfile(iosysid, &ncid, &format, "example1.nc", PIO_NOWRITE);
 
+    // debug
+    fmt::print(stderr, "*** consumer after opening file and before inquiring variable ID ***\n");
+
+    // read the metadata (get variable ID)
+    PIOc_inq_varid(ncid, VAR_NAME, &varid);
+
+    // debug
+    fmt::print(stderr, "*** consumer after inquiring variable ID {} and before reading data ***\n", varid);
+
     // read the data
     buffer = (int*)(malloc(elements_per_pe * sizeof(int)));
-    PIOc_inq_varid(ncid, VAR_NAME, &varid);
     PIOc_read_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, buffer);
+    // check the data values
+    for (int i = 0; i < elements_per_pe; i++)
+    {
+        if (buffer[i] != START_DATA_VAL + my_rank)
+        {
+            fmt::print(stderr, "*** consumer error: buffer[{}] = {} which should be {} ***\n", i, buffer[i], START_DATA_VAL + my_rank);
+            abort();
+        }
+    }
     free(buffer);
+
+    // debug
+    fmt::print(stderr, "*** consumer after reading data and before closing file ***\n");
 
     // clean up
     PIOc_closefile(ncid);
@@ -117,5 +140,8 @@ void consumer_f (
     PIOc_finalize(iosysid);
     if (!shared)
         H5Pclose(plist);
+
+    // debug
+    fmt::print(stderr, "*** consumer after closing file ***\n");
 }
 

@@ -207,8 +207,14 @@ int main(int argc, char* argv[])
             fmt::print(stderr, "Elapsed time for trial {}\t\t{:.4f} s.\n", i, times[i]);
     }
 
+    // debug
+    fmt::print(stderr, "*** prod-con before closing plist ***\n");
+
     if (shared)
         H5Pclose(plist);
+
+    // debug
+    fmt::print(stderr, "*** prod-con after closing plist ***\n");
 
     // timing stats
     double mean_time    = sum_time / ntrials;

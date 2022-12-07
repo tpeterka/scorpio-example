@@ -123,10 +123,17 @@ void producer_f (
 //         shared_vol_plugin->print_files();
 //     }
 
+    // debug
+    fmt::print(stderr, "*** producer before closing file ***\n");
+
     // clean up
     PIOc_closefile(ncid);
     PIOc_freedecomp(iosysid, ioid);
     PIOc_finalize(iosysid);
+
+    // debug
+    fmt::print(stderr, "*** producer after closing file ***\n");
+
     if (!shared)
         H5Pclose(plist);
 
