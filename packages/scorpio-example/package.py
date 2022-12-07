@@ -10,14 +10,14 @@ class ScorpioExample(CMakePackage):
     """Example of Testing Scorpio with LowFive."""
 
     # this is the actual public repo of the E3SM-Project (use this)
-    #homepage = "https://github.com/tpeterka/scorpio-example.git"
-    #url      = "https://github.com/tpeterka/scorpio-example.git"
-    #git      = "https://github.com/tpeterka/scorpio-example.git"
+    homepage = "https://github.com/tpeterka/scorpio-example.git"
+    url      = "https://github.com/tpeterka/scorpio-example.git"
+    git      = "https://github.com/tpeterka/scorpio-example.git"
 
     # the following uses my local repo (for debugging)
-    homepage = "/home/tpeterka/software/scorpio-example"
-    url      = "/home/tpeterka/software/scorpio-example"
-    git      = "/home/tpeterka/software/scorpio-example"
+    #homepage = "/home/tpeterka/software/scorpio-example"
+    #url      = "/home/tpeterka/software/scorpio-example"
+    #git      = "/home/tpeterka/software/scorpio-example"
 
     version('master', branch='master')
 
