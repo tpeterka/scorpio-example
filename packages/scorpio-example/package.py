@@ -21,16 +21,23 @@ class ScorpioExample(CMakePackage):
 
     version('master', branch='master')
 
-    depends_on('mpich@4.0.2 device=ch3')
+#     depends_on('mpich@4.0.2 device=ch3')
+#     depends_on('scorpio+hdf5', type='link')
+#     depends_on('hdf5+mpi+hl@1.12.1 ^mpich', type='link')
+#     depends_on('netcdf-c@4.8.1 +mpi', type='link')
+#     depends_on('parallel-netcdf@1.12.2 -shared', type='link')
+#     depends_on('lowfive+examples@tom-group-get', type='link')
+
+    depends_on('mpich')
     depends_on('scorpio+hdf5', type='link')
     depends_on('hdf5+mpi+hl@1.12.1 ^mpich', type='link')
-    depends_on('netcdf-c@4.8.1 +mpi', type='link')
-    depends_on('parallel-netcdf@1.12.2 -shared', type='link')
-    depends_on('lowfive+examples@tom-group-get', type='link')
+    depends_on('netcdf-c+mpi', type='link')
+    depends_on('parallel-netcdf', type='link')
+    depends_on('lowfive@master', type='link')
 
     def cmake_args(self):
-        args = ['-DCMAKE_C_COMPILER=%s' % self.spec['mpi'].mpicc,
-                '-DCMAKE_CXX_COMPILER=%s' % self.spec['mpi'].mpicxx,
+        args = ['-DCMAKE_C_COMPILER=%s' % self.spec['mpich'].mpicc,
+                '-DCMAKE_CXX_COMPILER=%s' % self.spec['mpich'].mpicxx,
                 '-DBUILD_SHARED_LIBS=false',
                 '-DNETCDF_PATH=%s' % self.spec['netcdf-c'].prefix,
                 '-DPNETCDF_PATH=%s' % self.spec['parallel-netcdf'].prefix,
