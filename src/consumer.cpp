@@ -80,6 +80,7 @@ void consumer_f (
             vol_plugin->passthru.push_back(all);
         if (metadata)
             vol_plugin->memory.push_back(all);
+        vol_plugin->set_intercomm("example1.nc", "*", 0);
     }
 
 //     // debugging
