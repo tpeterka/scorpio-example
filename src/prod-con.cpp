@@ -118,28 +118,26 @@ int main(int argc, char* argv[])
     }
 
     // shared MetadataVol plugin
-    std::unique_ptr<l5::MetadataVOL> shared_vol_plugin {};
+    l5::MetadataVOL& shared_vol_plugin = l5::MetadataVOL::create_MetadataVOL();
     hid_t plist;
     if (shared)
     {
         fmt::print(stderr, "prod-con: creating new shared mode MetadataVOL plugin\n");
-        shared_vol_plugin = std::unique_ptr<l5::MetadataVOL>(new l5::MetadataVOL);
         plist = H5Pcreate(H5P_FILE_ACCESS);
 
         if (passthru)
             H5Pset_fapl_mpio(plist, world, MPI_INFO_NULL);
 
-        l5::H5VOLProperty vol_prop(*shared_vol_plugin);
+        l5::H5VOLProperty vol_prop(shared_vol_plugin);
         if (!getenv("HDF5_VOL_CONNECTOR"))
             vol_prop.apply(plist);
 
         // set lowfive properties
-        LowFive::LocationPattern all { "example1.nc", "*"};
         if (passthru)
-            shared_vol_plugin->passthru.push_back(all);
+            shared_vol_plugin.set_passthru("example1.nc", "*");
         if (metadata)
-            shared_vol_plugin->memory.push_back(all);
-        shared_vol_plugin->set_keep(true);
+            shared_vol_plugin.set_memory("example1.nc", "*");
+        shared_vol_plugin.set_keep(true);
     }
 
     // declare lambdas for the tasks
@@ -151,7 +149,7 @@ int main(int argc, char* argv[])
                     bool,
                     int,
                     int,
-                    const std::unique_ptr<l5::MetadataVOL>&))
+                    l5::MetadataVOL&))
                     (producer_f_))(
                         producer_comm,
                         producer_intercomms,
@@ -168,7 +166,7 @@ int main(int argc, char* argv[])
                     bool,
                     int,
                     int,
-                    const std::unique_ptr<l5::MetadataVOL>&))
+                    l5::MetadataVOL&))
                     (consumer_f_))(
                         consumer_comm,
                         consumer_intercomms,

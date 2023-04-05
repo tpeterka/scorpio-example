@@ -18,7 +18,7 @@ void consumer_f (
         bool shared,
         int metadata,
         int passthru,
-        const std::unique_ptr<l5::MetadataVOL>& shared_vol_plugin);      // for single process, MetadataVOL test
+        l5::MetadataVOL& shared_vol_plugin);      // for single process, MetadataVOL test
 }
 
 void consumer_f (
@@ -27,7 +27,7 @@ void consumer_f (
         bool shared,
         int metadata,
         int passthru,
-        const std::unique_ptr<l5::MetadataVOL>& shared_vol_plugin)      // for single process, MetadataVOL test
+        l5::MetadataVOL& shared_vol_plugin)      // for single process, MetadataVOL test
 {
     diy::mpi::communicator local_(local);
 
@@ -57,36 +57,34 @@ void consumer_f (
     }
 
     // VOL plugin and properties
-    std::unique_ptr<l5::DistMetadataVOL> vol_plugin{};
     hid_t plist;
 
     if (shared)                     // single process, MetadataVOL test
         fmt::print(stderr, "consumer: using shared mode MetadataVOL plugin created by prod-con\n");
     else                            // normal multiprocess, DistMetadataVOL plugin
     {
-        vol_plugin = std::unique_ptr<l5::DistMetadataVOL>(new l5::DistMetadataVOL(local, intercomms));
+        l5::DistMetadataVOL& vol_plugin = l5::DistMetadataVOL::create_DistMetadataVOL(local, intercomms);
         plist = H5Pcreate(H5P_FILE_ACCESS);
 
         if (passthru)
             H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
 
-        l5::H5VOLProperty vol_prop(*vol_plugin);
+        l5::H5VOLProperty vol_prop(vol_plugin);
         if (!getenv("HDF5_VOL_CONNECTOR"))
             vol_prop.apply(plist);
 
         // set lowfive properties
-        LowFive::LocationPattern all { "example1.nc", "*"};
         if (passthru)
-            vol_plugin->passthru.push_back(all);
+            vol_plugin.set_passthru("example1.nc", "*");
         if (metadata)
-            vol_plugin->memory.push_back(all);
+            vol_plugin.set_memory("example1.nc", "*");
     }
 
 //     // debugging
 //     if (shared)
 //     {
 //         fmt::print(stderr, "Consumer metadata hierarchy:\n");
-//         shared_vol_plugin->print_files();
+//         shared_vol_plugin.print_files();
 //     }
 
     // init PIO
