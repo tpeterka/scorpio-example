@@ -78,6 +78,7 @@ void consumer_f (
             vol_plugin.set_passthru("example1.nc", "*");
         if (metadata)
             vol_plugin.set_memory("example1.nc", "*");
+        vol_plugin.set_intercomm("example1.nc", "*", 0);
     }
 
 //     // debugging
