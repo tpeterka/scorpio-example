@@ -14,22 +14,10 @@ class ScorpioExample(CMakePackage):
     url      = "https://github.com/tpeterka/scorpio-example.git"
     git      = "https://github.com/tpeterka/scorpio-example.git"
 
-    # the following uses my local repo (for debugging)
-    #homepage = "/home/tpeterka/software/scorpio-example"
-    #url      = "/home/tpeterka/software/scorpio-example"
-    #git      = "/home/tpeterka/software/scorpio-example"
-
     version('master', branch='master')
 
-#     depends_on('mpich@4.0.2 device=ch3')
-#     depends_on('scorpio+hdf5', type='link')
-#     depends_on('hdf5+mpi+hl@1.12.1 ^mpich', type='link')
-#     depends_on('netcdf-c@4.8.1 +mpi', type='link')
-#     depends_on('parallel-netcdf@1.12.2 -shared', type='link')
-#     depends_on('lowfive+examples@tom-group-get', type='link')
-
     depends_on('mpich')
-    depends_on('scorpio+hdf5', type='link')
+    depends_on('mpas-o-scorpio+hdf5', type='link')
     depends_on('hdf5+mpi+hl@1.12.1 ^mpich', type='link')
     depends_on('netcdf-c+mpi', type='link')
     depends_on('parallel-netcdf', type='link')
@@ -42,5 +30,5 @@ class ScorpioExample(CMakePackage):
                 '-DNETCDF_PATH=%s' % self.spec['netcdf-c'].prefix,
                 '-DPNETCDF_PATH=%s' % self.spec['parallel-netcdf'].prefix,
                 '-DLOWFIVE_PATH=%s' % self.spec['lowfive'].prefix,
-                '-DSCORPIO_PATH=%s' % self.spec['scorpio'].prefix]
+                '-DSCORPIO_PATH=%s' % self.spec['mpas-o-scorpio'].prefix]
         return args
