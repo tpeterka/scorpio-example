@@ -69,11 +69,11 @@ int main(int argc, char* argv[])
     // load tasks
     void* lib_producer = dlopen(producer_exec.c_str(), RTLD_LAZY);
     if (!lib_producer)
-        fmt::print(stderr, "Couldn't open producer.hx\n");
+        fmt::print(stderr, "Couldn't open {}\n", producer_exec);
 
     void* lib_consumer = dlopen(consumer_exec.c_str(), RTLD_LAZY);
     if (!lib_consumer)
-        fmt::print(stderr, "Couldn't open consumer.hx\n");
+        fmt::print(stderr, "Couldn't open {}\n", consumer_exec);
 
     void* producer_f_ = dlsym(lib_producer, "producer_f");
     if (!producer_f_)

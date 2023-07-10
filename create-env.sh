@@ -7,6 +7,8 @@ export YAML=$PWD/env.yaml
 echo "adding custom spack repos for scorpio and for scorpio-example"
 spack repo add mpas-o-scorpio > /dev/null 2>&1
 spack repo add . > /dev/null 2>&1
+echo "adding spack repo for lowfive"
+spack repo add lowfive > /dev/null 2>&1
 
 # create spack environment
 echo "creating spack environment $SPACKENV"

@@ -21,7 +21,7 @@ class ScorpioExample(CMakePackage):
     depends_on('hdf5+mpi+hl@1.12.1 ^mpich', type='link')
     depends_on('netcdf-c+mpi', type='link')
     depends_on('parallel-netcdf', type='link')
-    depends_on('lowfive@master', type='link')
+    depends_on('lowfive@tom-dev', type='link')
 
     def cmake_args(self):
         args = ['-DCMAKE_C_COMPILER=%s' % self.spec['mpich'].mpicc,

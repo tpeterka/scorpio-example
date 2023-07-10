@@ -1,4 +1,4 @@
-# Instructions for Building and Running Scorio Example
+# Instructions for Building and Running Scorpio Example
 
 Installation is done through Spack. If you don't have Spack installed or if Spack is new to you, go [here](https://spack.readthedocs.io/en/latest/) first.
 
@@ -23,7 +23,7 @@ source /path/to/scorpio-example/load-env.sh
 ## Running the example
 
 ```
-cd $SCORPIO_EXAMPLE/bin
+cd $SCORPIO_EXAMPLE_PATH/bin
 mpiexec -n 1 ./prod-con -m 0 -f 1
 ```
 
