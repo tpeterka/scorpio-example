@@ -22,9 +22,29 @@ source /path/to/scorpio-example/load-env.sh
 
 ## Running the example
 
+### Shared mode: one MPI rank, producer and consumer take turns on same rank
+
+passthru mode
 ```
 cd $SCORPIO_EXAMPLE_PATH/bin
 mpiexec -n 1 ./prod-con -m 0 -f 1
+```
+memory mode
+```
+cd $SCORPIO_EXAMPLE_PATH/bin
+mpiexec -n 1 ./prod-con
+```
+### Distributed mode: two MPI ranks, 1 rank producer + 1 rank consumer
+
+passthru mode
+```
+cd $SCORPIO_EXAMPLE_PATH/bin
+mpiexec -n 2 ./prod-con -m 0 -f 1
+```
+memory mode
+```
+cd $SCORPIO_EXAMPLE_PATH/bin
+mpiexec -n 2 ./prod-con
 ```
 
 

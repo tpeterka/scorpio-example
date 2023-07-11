@@ -20,6 +20,10 @@ spack env create $SPACKENV $YAML
 echo "activating spack environment"
 spack env activate $SPACKENV
 
+# add scorpio-example in develop mode
+spack develop scorpio-example@master
+spack add scorpio-example
+
 # install everything in environment
 echo "installing dependencies in environment"
 spack install
