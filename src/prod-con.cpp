@@ -118,10 +118,10 @@ int main(int argc, char* argv[])
     }
 
     // shared MetadataVol plugin
-    l5::MetadataVOL& shared_vol_plugin = l5::MetadataVOL::create_MetadataVOL();
     hid_t plist;
     if (shared)
     {
+        l5::MetadataVOL& shared_vol_plugin = l5::MetadataVOL::create_MetadataVOL();
         fmt::print(stderr, "prod-con: creating new shared mode MetadataVOL plugin\n");
         plist = H5Pcreate(H5P_FILE_ACCESS);
 
