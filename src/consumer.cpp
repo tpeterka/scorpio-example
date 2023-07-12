@@ -17,8 +17,7 @@ void consumer_f (
         const std::vector<communicator>& intercomms,
         bool shared,
         int metadata,
-        int passthru,
-        l5::MetadataVOL& shared_vol_plugin);      // for single process, MetadataVOL test
+        int passthru);
 }
 
 void consumer_f (
@@ -26,8 +25,7 @@ void consumer_f (
         const std::vector<communicator>& intercomms,
         bool shared,
         int metadata,
-        int passthru,
-        l5::MetadataVOL& shared_vol_plugin)      // for single process, MetadataVOL test
+        int passthru)
 {
     diy::mpi::communicator local_(local);
 
@@ -80,13 +78,6 @@ void consumer_f (
             vol_plugin.set_memory("example1.nc", "*");
         vol_plugin.set_intercomm("example1.nc", "*", 0);
     }
-
-//     // debugging
-//     if (shared)
-//     {
-//         fmt::print(stderr, "Consumer metadata hierarchy:\n");
-//         shared_vol_plugin.print_files();
-//     }
 
     // init PIO
     PIOc_Init_Intracomm(local, ntasks, ioproc_stride, ioproc_start, PIO_REARR_SUBSET, &iosysid);

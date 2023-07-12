@@ -148,15 +148,13 @@ int main(int argc, char* argv[])
                     const std::vector<communicator>&,
                     bool,
                     int,
-                    int,
-                    l5::MetadataVOL&))
+                    int))
                     (producer_f_))(
                         producer_comm,
                         producer_intercomms,
                         shared,
                         metadata,
-                        passthru,
-                        shared_vol_plugin);
+                        passthru);
     };
 
     auto consumer_f = [&]()
@@ -165,15 +163,13 @@ int main(int argc, char* argv[])
                     const std::vector<communicator>&,
                     bool,
                     int,
-                    int,
-                    l5::MetadataVOL&))
+                    int))
                     (consumer_f_))(
                         consumer_comm,
                         consumer_intercomms,
                         shared,
                         metadata,
-                        passthru,
-                        shared_vol_plugin);
+                        passthru);
     };
 
     std::vector<double> times(ntrials);     // elapsed time for each trial
@@ -205,14 +201,8 @@ int main(int argc, char* argv[])
             fmt::print(stderr, "Elapsed time for trial {}\t\t{:.4f} s.\n", i, times[i]);
     }
 
-    // debug
-    fmt::print(stderr, "*** prod-con before closing plist ***\n");
-
     if (shared)
         H5Pclose(plist);
-
-    // debug
-    fmt::print(stderr, "*** prod-con after closing plist ***\n");
 
     // timing stats
     double mean_time    = sum_time / ntrials;

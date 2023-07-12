@@ -22,8 +22,7 @@ void producer_f (
         const std::vector<communicator>& intercomms,
         bool shared,
         int metadata,
-        int passthru,
-        l5::MetadataVOL& shared_vol_plugin);      // for single process, MetadataVOL test
+        int passthru);
 }
 
 void producer_f (
@@ -31,8 +30,7 @@ void producer_f (
         const std::vector<communicator>& intercomms,
         bool shared,
         int metadata,
-        int passthru,
-        l5::MetadataVOL& shared_vol_plugin)      // for single process, MetadataVOL test
+        int passthru)
 {
     diy::mpi::communicator local_(local);
 
@@ -113,13 +111,6 @@ void producer_f (
         buffer[i] = START_DATA_VAL + my_rank;
     PIOc_write_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, buffer, NULL);
     free(buffer);
-
-    // debugging
-    if (shared)
-    {
-        fmt::print(stderr, "Producer metadata hierarchy:\n");
-        shared_vol_plugin.print_files();
-    }
 
     // debug
     fmt::print(stderr, "*** producer before closing file ***\n");

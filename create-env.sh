@@ -20,6 +20,10 @@ spack env create $SPACKENV $YAML
 echo "activating spack environment"
 spack env activate $SPACKENV
 
+# add scorpio in develop mode
+spack develop mpas-o-scorpio+hdf5@master
+spack add mpas-o-scorpio+hdf5
+
 # add scorpio-example in develop mode
 spack develop scorpio-example@master
 spack add scorpio-example
