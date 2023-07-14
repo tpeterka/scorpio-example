@@ -22,6 +22,15 @@ source /path/to/scorpio-example/load-env.sh
 
 ## Running the example
 
+### First time: create an example1.nc file
+
+Because of a quirk in the way that SCORPIO I/O works, there needs to be an `example1.nc` file on disk, otherwise SCORPIO
+will complain. This means that you need to run the example once in passthru mode, and replace the file anytime it gets
+deleted, e.g., if the binary directory is re-installed.
+```
+mpiexec -n 1 ./prod-con -m 0 -f 1
+```
+
 ### Shared mode: one MPI rank, producer and consumer take turns on same rank
 
 passthru mode
