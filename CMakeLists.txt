@@ -40,7 +40,12 @@ add_subdirectory            (ext/fmt)
 set                         (libraries ${libraries} fmt::fmt)
 
 # LowFive
+if                          (DEFINED ENV{LOWFIVE_PATH})
+    set                     (LOWFIVE_PATH $ENV{LOWFIVE_PATH})
+endif                       ()
+
 if                          (LOWFIVE_PATH)
+    message                 ("Found LOWFIVE_PATH")
     set                     (LOWFIVE_LIBRARY ${LOWFIVE_PATH}/lib/liblowfive.so)
     set                     (LOWFIVE_DIST_LIBRARY ${LOWFIVE_PATH}/lib/liblowfive-dist.a)
     set                     (LOWFIVE_INCLUDE_DIR ${LOWFIVE_PATH}/include)
@@ -56,6 +61,10 @@ include_directories         (SYSTEM ${LOWFIVE_INCLUDE_DIR}
                             SYSTEM ${LOWFIVE_INCLUDE_DIR}/diy)
 
 # HDF5
+if                          (DEFINED ENV{HDF5_PATH})
+    set                     (HDF5_PATH $ENV{HDF5_PATH})
+endif                       ()
+
 if                          (HDF5_PATH)
     set                     (HDF5_LIBRARY ${HDF5_PATH}/lib/libhdf5.so)
     set                     (HDF5_HL_LIBRARY ${HDF5_PATH}/lib/libhdf5_hl.so)
@@ -79,6 +88,10 @@ set                         (libraries ${libraries} ${HDF5_LIBRARY})
 include_directories         (SYSTEM ${HDF5_INCLUDE_DIR})
 
 # Scorpio
+if                          (DEFINED ENV{SCORPIO_PATH})
+    set                     (SCORPIO_PATH $ENV{SCORPIO_PATH})
+endif                       ()
+
 if                          (SCORPIO_PATH)
     set                     (SCORPIO_LIBRARY ${SCORPIO_PATH}/lib/libpioc.so)
     set                     (SCORPIO_INCLUDE_DIR ${SCORPIO_PATH}/include)
@@ -92,6 +105,10 @@ set                         (libraries ${libraries} ${SCORPIO_LIBRARY})
 include_directories         (SYSTEM ${SCORPIO_INCLUDE_DIR})
 
 # NetCDF
+if                          (DEFINED ENV{NETCDF_PATH})
+    set                     (NETCDF_PATH $ENV{NETCDF_PATH})
+endif                       ()
+
 if                          (NETCDF_PATH)
     set                     (NETCDF_LIBRARY     ${NETCDF_PATH}/lib/libnetcdf.so)
     set                     (NETCDF_INCLUDE_DIR ${NETCDF_PATH}/include)
@@ -104,6 +121,10 @@ set                         (libraries ${libraries} ${NETCDF_LIBRARY})
 include_directories         (SYSTEM ${NETCDF_INCLUDE_DIR})
 
 # PnetCDF
+if                          (DEFINED ENV{PNETCDF_PATH})
+    set                     (PNETCDF_PATH $ENV{PNETCDF_PATH})
+endif                       ()
+
 if                          (PNETCDF_PATH)
     set                     (PNETCDF_INCLUDE_DIR ${PNETCDF_PATH}/include)
     message                 ("PNETCDF_INCLUDE_DIR = ${PNETCDF_INCLUDE_DIR}")
