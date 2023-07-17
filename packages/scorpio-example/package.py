@@ -5,6 +5,7 @@
 
 from spack import *
 
+import os
 
 class ScorpioExample(CMakePackage):
     """Example of Testing Scorpio with LowFive."""
@@ -12,16 +13,16 @@ class ScorpioExample(CMakePackage):
     # this is the actual public repo of the E3SM-Project (use this)
     homepage = "https://github.com/tpeterka/scorpio-example.git"
     url      = "https://github.com/tpeterka/scorpio-example.git"
-    git      = "https://github.com/tpeterka/scorpio-example.git"
+    # git      = "https://github.com/tpeterka/scorpio-example.git"
+    git      = os.path.expanduser('~/Research/ISDM/hdf5-vol/scorpio-example')
 
     version('master', branch='master')
 
     depends_on('mpich')
     depends_on('mpas-o-scorpio+hdf5', type='link')
-    depends_on('hdf5+mpi+hl@1.12.1 ^mpich', type='link')
     depends_on('netcdf-c+mpi', type='link')
     depends_on('parallel-netcdf', type='link')
-    depends_on('lowfive@tom-dev', type='link')
+    depends_on('lowfive', type='link')
 
     def cmake_args(self):
         args = ['-DCMAKE_C_COMPILER=%s' % self.spec['mpich'].mpicc,
