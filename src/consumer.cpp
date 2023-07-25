@@ -2,6 +2,7 @@
 #include <thread>
 #include "prod-con.hpp"
 
+#include <netcdf.h>
 #include <pio.h>
 
 #define NDIM 1
@@ -28,6 +29,10 @@ void consumer_f (
         int passthru)
 {
     diy::mpi::communicator local_(local);
+
+    // enable netCDF logging
+    int level = 5;      // 1: min, 5: max
+    nc_set_log_level(level);
 
     // PIO defs
     int my_rank = local_.rank();
