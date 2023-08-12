@@ -3,11 +3,13 @@
 
 #include <pio.h>
 
-#define NDIM 1
-#define DIM_LEN 1024
-#define DIM_NAME "x"
-#define VAR_NAME "foo"
-#define START_DATA_VAL 100
+#define MAX_DIMS 10
+
+// #define NDIM 1
+// #define DIM_LEN 1024
+// #define DIM_NAME "x"
+// #define VAR_NAME "foo"
+// #define START_DATA_VAL 100
 
 herr_t fail_on_hdf5_error(hid_t stack_id, void*)
 {
@@ -34,25 +36,38 @@ void producer_f (
 {
     diy::mpi::communicator local_(local);
 
-    // PIO defs
-    int my_rank = local_.rank();
-    int ntasks  = local_.size();
-    int format = PIO_IOTYPE_NETCDF4P;
-//     int format = PIO_IOTYPE_HDF5;
-    int ioproc_stride = 1;
-    int ioproc_start = 0;
-    int dimid;
-    PIO_Offset elements_per_pe;
-    int dim_len[1] = {DIM_LEN};
-    int iosysid;
-    int ncid;
-    int varid;
-    int ioid;
-    int *buffer = NULL;
-    PIO_Offset *compdof = NULL;
+    int                     ioproc_stride   = 1;
+    int                     ioproc_start    = 0;
+    int                     iosysid;
+    int                     ncid;
+    int                     format          = PIO_IOTYPE_NETCDF4P;
+    PIO_Offset              elements_per_pe;
+    int                     ioid;
+    int                     ndims;
+    int                     varid           = -1;
+    int                     dimid;
+    std::vector<PIO_Offset> compdof;
+    std::vector<int>        dim_len(MAX_DIMS);
+
+//     // PIO defs
+//     int my_rank = local_.rank();
+//     int ntasks  = local_.size();
+//     int format = PIO_IOTYPE_NETCDF4P;
+// //     int format = PIO_IOTYPE_HDF5;
+//     int ioproc_stride = 1;
+//     int ioproc_start = 0;
+//     int dimid;
+//     PIO_Offset elements_per_pe;
+//     int dim_len[1] = {DIM_LEN};
+//     int iosysid;
+//     int ncid;
+//     int varid;
+//     int ioid;
+//     int *buffer = NULL;
+//     PIO_Offset *compdof = NULL;
 
     // debug
-    fmt::print(stderr, "producer: local comm rank {} size {}\n", my_rank, ntasks);
+    fmt::print(stderr, "producer: local comm rank {} size {}\n", local_.rank(), local_.size());
 
     // VOL plugin and properties
     hid_t plist;
@@ -85,32 +100,68 @@ void producer_f (
     H5Eset_auto(H5E_DEFAULT, fail_on_hdf5_error, NULL);
 
     // init PIO
-    PIOc_Init_Intracomm(local, ntasks, ioproc_stride, ioproc_start, PIO_REARR_SUBSET, &iosysid);
-
-    // decomposition
-    elements_per_pe = DIM_LEN / ntasks;
-    compdof = (MPI_Offset*)(malloc(elements_per_pe * sizeof(PIO_Offset)));
-
-    for (int i = 0; i < elements_per_pe; i++)
-        compdof[i] = (my_rank * elements_per_pe + i + 1) + 10;
-
-    PIOc_InitDecomp(iosysid, PIO_INT, NDIM, dim_len, (PIO_Offset)elements_per_pe, compdof, &ioid, NULL, NULL, NULL);
-    free(compdof);
+    PIOc_Init_Intracomm(local, local_.size(), ioproc_stride, ioproc_start, PIO_REARR_SUBSET, &iosysid);
 
     // create file
     PIOc_createfile(iosysid, &ncid, &format, "example1.nc", PIO_CLOBBER);
 
     // define variables
-    PIOc_def_dim(ncid, DIM_NAME, (PIO_Offset)dim_len[0], &dimid);
-    PIOc_def_var(ncid, VAR_NAME, PIO_INT, NDIM, &dimid, &varid);
+    dim_len[0] = 1024;
+    PIOc_def_dim(ncid, "x", (PIO_Offset)dim_len[0], &dimid);
+    PIOc_def_var(ncid, "v1", PIO_INT, 1, &dimid, &varid);
+    PIOc_def_var(ncid, "v2", PIO_INT, 3, &dimid, &varid);
     PIOc_enddef(ncid);
 
-    // write the data
-    buffer = (int*)(malloc(elements_per_pe * sizeof(int)));
+    //  ------ variable v1 -----
+
+    // decomposition
+    ndims           = 1;                    // dimensionality TODO: inquire from file
+    dim_len[0]      = 1024;                 // size in each dimension TODO: inquire from file
+    elements_per_pe = dim_len[0] / local_.size();
+    compdof.resize(elements_per_pe);
+
     for (int i = 0; i < elements_per_pe; i++)
-        buffer[i] = START_DATA_VAL + my_rank;
-    PIOc_write_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, buffer, NULL);
-    free(buffer);
+        compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
+
+    PIOc_InitDecomp(iosysid, PIO_INT, ndims, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+
+    // write the data
+    std::vector<int> v1(elements_per_pe);
+    for (int i = 0; i < elements_per_pe; i++)
+        v1[i] = local_.rank() * elements_per_pe + i;
+    PIOc_write_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, &v1[0], NULL);
+
+    PIOc_freedecomp(iosysid, ioid);
+
+    // -------- v2 --------
+
+    // decomposition
+    // even though it's a 3d dataspace, time is taken separately, and the decomposition is the
+    // remaining 2d dimensions
+    ndims           = 3;                    // dimensionality TODO: inquire from file
+    dim_len[0]      = 3;                    // timestep TODO: inquire from file
+    dim_len[1]      = 128;                  // 2nd dim
+    dim_len[2]      = 128;                  // 3rd dim
+    elements_per_pe = dim_len[1] * dim_len[2] / local_.size();
+    compdof.resize(elements_per_pe);
+
+    for (int i = 0; i < elements_per_pe; i++)
+        compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
+
+    // starting dim_len at index 1 because index 0 is the time step
+    PIOc_InitDecomp(iosysid, PIO_DOUBLE, ndims - 1, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+
+    // write the data
+    std::vector<double> v2(elements_per_pe);
+    for (auto t = 0; t < dim_len[0]; t++)      // for all timesteps
+    {
+        for (int i = 0; i < elements_per_pe; i++)
+            v2[i] = t * elements_per_pe * local_.size() + local_.rank() * elements_per_pe + i;;
+        PIOc_setframe(ncid, varid, t);
+        PIOc_write_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, &v2[0], NULL);
+    }
+
+    PIOc_freedecomp(iosysid, ioid);
 
     // debug
     fmt::print(stderr, "*** producer before closing file ***\n");
