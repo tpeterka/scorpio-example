@@ -7,12 +7,6 @@
 
 #define MAX_DIMS 10
 
-// #define NDIM 1
-// #define DIM_LEN 1024
-// #define DIM_NAME "x"
-// #define VAR_NAME "foo"
-// #define START_DATA_VAL 100
-
 extern "C"
 {
 void consumer_f (
@@ -47,21 +41,6 @@ void consumer_f (
     int varid               = -1;
     std::vector<PIO_Offset> compdof;
     std::vector<int>        dim_len(MAX_DIMS);
-
-//     // PIO defs
-//     int my_rank = local_.rank();
-//     int ntasks  = local_.size();
-//     int ioproc_stride = 1;
-//     int ioproc_start = 0;
-//     int iosysid;
-//     int ncid;
-//     int format = PIO_IOTYPE_NETCDF4P;
-//     int *buffer = NULL;
-//     PIO_Offset elements_per_pe;
-//     PIO_Offset *compdof = NULL;
-//     int dim_len[1] = {DIM_LEN};
-//     int ioid;
-//     int varid = -1;
 
     // debug
     fmt::print(stderr, "consumer: local comm rank {} size {}\n", local_.rank(), local_.size());
