@@ -39,9 +39,10 @@ void producer_f (
     int                     ioid;
     int                     ndims;
     int                     varid           = -1;
-    int                     dimid;
+    std::vector<int>        dimid(MAX_DIMS);
     std::vector<PIO_Offset> compdof;
     std::vector<int>        dim_len(MAX_DIMS);
+    std::vector<std::string>    dim_name(MAX_DIMS);
 
     // debug
     fmt::print(stderr, "producer: local comm rank {} size {}\n", local_.rank(), local_.size());
@@ -83,24 +84,29 @@ void producer_f (
     PIOc_createfile(iosysid, &ncid, &format, "example1.nc", PIO_CLOBBER);
 
     // define variables
-    dim_len[0] = 1024;
-    PIOc_def_dim(ncid, "x", (PIO_Offset)dim_len[0], &dimid);
-    PIOc_def_var(ncid, "v1", PIO_INT, 1, &dimid, &varid);
-    PIOc_def_var(ncid, "v2", PIO_INT, 3, &dimid, &varid);
+    dim_name[0] = "t";
+    dim_name[1] = "x";
+    dim_name[2] = "y";
+    dim_len[0]  = 3;
+    dim_len[1]  = 128;
+    dim_len[2]  = 128;
+    PIOc_def_dim(ncid, dim_name[1].c_str(), dim_len[1], &dimid[1]);
+    PIOc_def_var(ncid, "v1", PIO_INT, 1, &dimid[1], &varid);
+    for (int d = 0; d < 3; d++)
+        PIOc_def_dim(ncid, dim_name[d].c_str(), dim_len[d], &dimid[d]);
+    PIOc_def_var(ncid, "v2", PIO_INT, 3, &dimid[0], &varid);
     PIOc_enddef(ncid);
 
     //  ------ variable v1 -----
 
     // decomposition
-    ndims           = 1;                    // dimensionality TODO: inquire from file
-    dim_len[0]      = 1024;                 // size in each dimension TODO: inquire from file
     elements_per_pe = dim_len[0] / local_.size();
     compdof.resize(elements_per_pe);
 
     for (int i = 0; i < elements_per_pe; i++)
         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
 
-    PIOc_InitDecomp(iosysid, PIO_INT, ndims, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+    PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
 
     // write the data
     std::vector<int> v1(elements_per_pe);
@@ -115,10 +121,6 @@ void producer_f (
     // decomposition
     // even though it's a 3d dataspace, time is taken separately, and the decomposition is the
     // remaining 2d dimensions
-    ndims           = 3;                    // dimensionality TODO: inquire from file
-    dim_len[0]      = 3;                    // timestep TODO: inquire from file
-    dim_len[1]      = 128;                  // 2nd dim
-    dim_len[2]      = 128;                  // 3rd dim
     elements_per_pe = dim_len[1] * dim_len[2] / local_.size();
     compdof.resize(elements_per_pe);
 
@@ -126,7 +128,7 @@ void producer_f (
         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
 
     // starting dim_len at index 1 because index 0 is the time step
-    PIOc_InitDecomp(iosysid, PIO_DOUBLE, ndims - 1, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+    PIOc_InitDecomp(iosysid, PIO_DOUBLE, 2, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
 
     // write the data
     std::vector<double> v2(elements_per_pe);

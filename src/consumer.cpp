@@ -86,21 +86,23 @@ void consumer_f (
     // open file for reading
     PIOc_openfile(iosysid, &ncid, &format, "example1.nc", PIO_NOWRITE);
 
+    dim_len[0]  = 3;
+    dim_len[1]  = 128;
+    dim_len[2]  = 128;
+
     // debug
     fmt::print(stderr, "*** consumer after opening file ***\n");
 
     //  ------ variable v1 -----
 
     // decomposition
-    ndims           = 1;                    // dimensionality TODO: inquire from file
-    dim_len[0]      = 1024;                 // size in each dimension TODO: inquire from file
     elements_per_pe = dim_len[0] / local_.size();
     compdof.resize(elements_per_pe);
 
     for (int i = 0; i < elements_per_pe; i++)
         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
 
-    PIOc_InitDecomp(iosysid, PIO_INT, ndims, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+    PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
 
     // read the metadata (get variable ID)
     varid = -1;
@@ -129,10 +131,6 @@ void consumer_f (
     // decomposition
     // even though it's a 3d dataspace, time is taken separately, and the decomposition is the
     // remaining 2d dimensions
-    ndims           = 3;                    // dimensionality TODO: inquire from file
-    dim_len[0]      = 3;                    // timestep TODO: inquire from file
-    dim_len[1]      = 128;                  // 2nd dim
-    dim_len[2]      = 128;                  // 3rd dim
     elements_per_pe = dim_len[1] * dim_len[2] / local_.size();
     compdof.resize(elements_per_pe);
 
@@ -140,7 +138,7 @@ void consumer_f (
         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
 
     // starting dim_len at index 1 because index 0 is the time step
-    PIOc_InitDecomp(iosysid, PIO_DOUBLE, ndims - 1, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+    PIOc_InitDecomp(iosysid, PIO_DOUBLE, 2, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
 
     // read the metadata (get variable ID)
     varid = -1;
