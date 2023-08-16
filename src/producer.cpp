@@ -30,6 +30,10 @@ void producer_f (
 {
     diy::mpi::communicator local_(local);
 
+    // enable netCDF logging
+    int level = 5;      // 1: min, 5: max
+    nc_set_log_level(level);
+
     int                     ioproc_stride   = 1;
     int                     ioproc_start    = 0;
     int                     iosysid;
@@ -73,7 +77,7 @@ void producer_f (
     }
 
     // set Scorpio log level
-//     PIOc_set_log_level(5);
+    PIOc_set_log_level(5);
 
     // set HDF5 error handler
     H5Eset_auto(H5E_DEFAULT, fail_on_hdf5_error, NULL);
@@ -85,15 +89,16 @@ void producer_f (
     PIOc_createfile(iosysid, &ncid, &format, "example1.nc", PIO_CLOBBER);
 
     // variable sizes
-    dim_len[0]  = 3;
+    int ntime_steps = 3;
+    dim_len[0]  = 128;
     dim_len[1]  = 128;
-    dim_len[2]  = 128;
 
     // define variables
-    PIOc_def_dim(ncid, "s", (PIO_Offset)dim_len[1], &dimid_v1[0]);
-    PIOc_def_dim(ncid, "t", (PIO_Offset)dim_len[0], &dimid_v2[0]);
-    PIOc_def_dim(ncid, "x", (PIO_Offset)dim_len[1], &dimid_v2[1]);
-    PIOc_def_dim(ncid, "y", (PIO_Offset)dim_len[2], &dimid_v2[2]);
+    PIOc_def_dim(ncid, "s", (PIO_Offset)dim_len[0], &dimid_v1[0]);
+//     PIOc_def_dim(ncid, "t", (PIO_Offset)ntime_steps, &dimid_v2[0]);
+    PIOc_def_dim(ncid, "t", NC_UNLIMITED, &dimid_v2[0]);
+    PIOc_def_dim(ncid, "x", (PIO_Offset)dim_len[0], &dimid_v2[1]);
+    PIOc_def_dim(ncid, "y", (PIO_Offset)dim_len[1], &dimid_v2[2]);
     PIOc_def_var(ncid, "v1", PIO_INT, 1, &dimid_v1[0], &varid1);
     PIOc_def_var(ncid, "v2", PIO_DOUBLE, 3, &dimid_v2[0], &varid2);
     PIOc_enddef(ncid);
@@ -101,11 +106,11 @@ void producer_f (
     //  ------ variable v1 -----
 
     // decomposition
-    elements_per_pe = dim_len[1] / local_.size();
+    elements_per_pe = dim_len[0] / local_.size();
     compdof.resize(elements_per_pe);
     for (int i = 0; i < elements_per_pe; i++)
         compdof[i] = local_.rank() * elements_per_pe + i + 1;       // scorpio's compdof starts at 1, not 0
-    PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+    PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
 
     // write the data
     std::vector<int> v1(elements_per_pe);
@@ -116,20 +121,15 @@ void producer_f (
     // -------- v2 --------
 
     // decomposition
-    // even though it's a 3d dataspace, time is taken separately, and the decomposition is the
-    // remaining 2d dimensions
-    elements_per_pe = dim_len[1] * dim_len[2] / local_.size();
+    elements_per_pe = dim_len[0] * dim_len[1] / local_.size();
     compdof.resize(elements_per_pe);
-
     for (int i = 0; i < elements_per_pe; i++)
         compdof[i] = local_.rank() * elements_per_pe + i + 1;       // scorpio's compdof starts at 1, not 0
-
-    // starting dim_len at index 1 because index 0 is the time step
-    PIOc_InitDecomp(iosysid, PIO_DOUBLE, 2, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+    PIOc_InitDecomp(iosysid, PIO_DOUBLE, 2, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
 
     // write the data
     std::vector<double> v2(elements_per_pe);
-    for (auto t = 0; t < dim_len[0]; t++)      // for all timesteps
+    for (auto t = 0; t < ntime_steps; t++)      // for all timesteps
     {
         for (int i = 0; i < elements_per_pe; i++)
             v2[i] = t * elements_per_pe * local_.size() + local_.rank() * elements_per_pe + i;;

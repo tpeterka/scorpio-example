@@ -7,6 +7,13 @@
 
 #define MAX_DIMS 10
 
+herr_t fail_on_hdf5_error(hid_t stack_id, void*)
+{
+    H5Eprint(stack_id, stderr);
+    fprintf(stderr, "An HDF5 error was detected. Terminating.\n");
+    exit(1);
+}
+
 extern "C"
 {
 void consumer_f (
@@ -38,9 +45,12 @@ void consumer_f (
     PIO_Offset              elements_per_pe;
     int                     ioid;
     int                     ndims;
-    int varid               = -1;
+    int                     varid1          = -1;
+    int                     varid2          = -1;
     std::vector<PIO_Offset> compdof;
     std::vector<int>        dim_len(MAX_DIMS);
+    std::vector<int>        dimid_v1(MAX_DIMS);
+    std::vector<int>        dimid_v2(MAX_DIMS);
 
     // debug
     fmt::print(stderr, "consumer: local comm rank {} size {}\n", local_.rank(), local_.size());
@@ -77,101 +87,87 @@ void consumer_f (
         vol_plugin.set_intercomm("example1.nc", "*", 0);
     }
 
+    // set Scorpio log level
+    PIOc_set_log_level(5);
+
+    // set HDF5 error handler
+    H5Eset_auto(H5E_DEFAULT, fail_on_hdf5_error, NULL);
+
     // init PIO
     PIOc_Init_Intracomm(local, local_.size(), ioproc_stride, ioproc_start, PIO_REARR_SUBSET, &iosysid);
 
-    // debug
-//     fmt::print(stderr, "*** consumer before opening file ***\n");
+    // open file for reading
+    PIOc_openfile(iosysid, &ncid, &format, "example1.nc", PIO_NOWRITE);
 
-//     // open file for reading
-//     PIOc_openfile(iosysid, &ncid, &format, "example1.nc", PIO_NOWRITE);
-// 
-//     dim_len[0]  = 3;
-//     dim_len[1]  = 128;
-//     dim_len[2]  = 128;
-// 
-//     // debug
-//     fmt::print(stderr, "*** consumer after opening file ***\n");
-// 
-//     //  ------ variable v1 -----
-// 
-//     // decomposition
-//     elements_per_pe = dim_len[0] / local_.size();
-//     compdof.resize(elements_per_pe);
-// 
-//     for (int i = 0; i < elements_per_pe; i++)
-//         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // scorpio's compdof starts at 1, not 0
-// 
-//     PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
-// 
-//     // read the metadata (get variable ID)
-//     varid = -1;
-//     PIOc_inq_varid(ncid, "v1", &varid);
-// 
-//     // debug
-//     fmt::print(stderr, "*** consumer after inquiring variable ID {} for v1 ***\n", varid);
-// 
-//     // read the data
-//     std::vector<int> v1(elements_per_pe);
-//     PIOc_read_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, &v1[0]);
-//     // check the data values
-//     for (int i = 0; i < elements_per_pe; i++)
-//     {
-//         if (v1[i] != local_.rank() * elements_per_pe + i)
-//         {
-//             fmt::print(stderr, "*** consumer error: v1[{}] = {} which should be {} ***\n", i, v1[i], local_.rank() * elements_per_pe + i);
-//             abort();
-//         }
-//     }
-// 
-//     PIOc_freedecomp(iosysid, ioid);
-// 
-//     // -------- v2 --------
-// 
-//     // decomposition
-//     // even though it's a 3d dataspace, time is taken separately, and the decomposition is the
-//     // remaining 2d dimensions
-//     elements_per_pe = dim_len[1] * dim_len[2] / local_.size();
-//     compdof.resize(elements_per_pe);
-// 
-//     for (int i = 0; i < elements_per_pe; i++)
-//         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
-// 
-//     // starting dim_len at index 1 because index 0 is the time step
-//     PIOc_InitDecomp(iosysid, PIO_DOUBLE, 2, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
-// 
-//     // read the metadata (get variable ID)
-//     varid = -1;
-//     PIOc_inq_varid(ncid, "v2", &varid);
-// 
-//     // debug
-//     fmt::print(stderr, "*** consumer after inquiring variable ID {} for v2  ***\n", varid);
-// 
-//     // read the data
-//     std::vector<double> v2(elements_per_pe);
-//     for (auto t = 0; t < dim_len[0]; t++)      // for all timesteps
-//     {
-//         PIOc_setframe(ncid, varid, t);
-//         PIOc_read_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, &v2[0]);
-// 
-//         // check the data values
-//         for (int i = 0; i < elements_per_pe; i++)
-//         {
-//             if (v2[i] != t * elements_per_pe * local_.size() + local_.rank() * elements_per_pe + i)
-//             {
-//                 fmt::print(stderr, "*** consumer error: v2[{}] = {} which should be {} ***\n", i, v2[i], t * elements_per_pe * local_.size() + local_.rank() * elements_per_pe + i);
-//                 abort();
-//             }
-//         }
-//     }
-// 
-//     PIOc_freedecomp(iosysid, ioid);
+    // variable sizes
+    int ntime_steps = 3;
+    dim_len[0]  = 128;
+    dim_len[1]  = 128;
+
+    //  ------ variable v1 -----
+
+    // decomposition
+    elements_per_pe = dim_len[0] / local_.size();
+    compdof.resize(elements_per_pe);
+    for (int i = 0; i < elements_per_pe; i++)
+        compdof[i] = local_.rank() * elements_per_pe + i + 1;        // scorpio's compdof starts at 1, not 0
+    PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+
+    // read the metadata (get variable ID)
+    PIOc_inq_varid(ncid, "v1", &varid1);
 
     // debug
-    fmt::print(stderr, "*** consumer after reading data and before closing file ***\n");
+    fmt::print(stderr, "*** consumer after inquiring variable ID {} for v1 ***\n", varid1);
+
+    // read the data
+    std::vector<int> v1(elements_per_pe);
+    PIOc_read_darray(ncid, varid1, ioid, (PIO_Offset)elements_per_pe, &v1[0]);
+    // check the data values
+    for (int i = 0; i < elements_per_pe; i++)
+    {
+        if (v1[i] != local_.rank() * elements_per_pe + i)
+        {
+            fmt::print(stderr, "*** consumer error: v1[{}] = {} which should be {} ***\n", i, v1[i], local_.rank() * elements_per_pe + i);
+            abort();
+        }
+    }
+
+    // -------- v2 --------
+
+    // decomposition
+    elements_per_pe = dim_len[0] * dim_len[1] / local_.size();
+    compdof.resize(elements_per_pe);
+    for (int i = 0; i < elements_per_pe; i++)
+        compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
+    PIOc_InitDecomp(iosysid, PIO_DOUBLE, 2, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+
+    // read the metadata (get variable ID)
+    PIOc_inq_varid(ncid, "v2", &varid2);
+
+    // debug
+    fmt::print(stderr, "*** consumer after inquiring variable ID {} for v2  ***\n", varid2);
+
+    // read the data
+    std::vector<double> v2(elements_per_pe);
+    for (auto t = 0; t < ntime_steps; t++)      // for all timesteps
+    {
+        PIOc_setframe(ncid, varid2, t);
+        PIOc_read_darray(ncid, varid2, ioid, (PIO_Offset)elements_per_pe, &v2[0]);
+
+        // check the data values
+        for (int i = 0; i < elements_per_pe; i++)
+        {
+            if (v2[i] != t * elements_per_pe * local_.size() + local_.rank() * elements_per_pe + i)
+            {
+                fmt::print(stderr, "*** consumer error: v2[{}] = {} which should be {} ***\n", i, v2[i], t * elements_per_pe * local_.size() + local_.rank() * elements_per_pe + i);
+                abort();
+            }
+        }
+    }
 
     // clean up
-//     PIOc_closefile(ncid);
+    PIOc_closefile(ncid);
+    PIOc_freedecomp(iosysid, ioid);
     PIOc_finalize(iosysid);
     if (!shared)
         H5Pclose(plist);
