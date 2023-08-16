@@ -38,11 +38,12 @@ void producer_f (
     PIO_Offset              elements_per_pe;
     int                     ioid;
     int                     ndims;
-    int                     varid           = -1;
-    std::vector<int>        dimid(MAX_DIMS);
+    int                     varid1          = -1;
+    int                     varid2          = -1;
     std::vector<PIO_Offset> compdof;
     std::vector<int>        dim_len(MAX_DIMS);
-    std::vector<std::string>    dim_name(MAX_DIMS);
+    std::vector<int>        dimid_v1(MAX_DIMS);
+    std::vector<int>        dimid_v2(MAX_DIMS);
 
     // debug
     fmt::print(stderr, "producer: local comm rank {} size {}\n", local_.rank(), local_.size());
@@ -83,70 +84,64 @@ void producer_f (
     // create file
     PIOc_createfile(iosysid, &ncid, &format, "example1.nc", PIO_CLOBBER);
 
-//     // define variables
-//     dim_name[0] = "t";
-//     dim_name[1] = "x";
-//     dim_name[2] = "y";
-//     dim_len[0]  = 3;
-//     dim_len[1]  = 128;
-//     dim_len[2]  = 128;
-//     PIOc_def_dim(ncid, dim_name[1].c_str(), dim_len[1], &dimid[1]);
-//     PIOc_def_var(ncid, "v1", PIO_INT, 1, &dimid[1], &varid);
-// //     for (int d = 0; d < 3; d++)
-// //         PIOc_def_dim(ncid, dim_name[d].c_str(), dim_len[d], &dimid[d]);
-// //     PIOc_def_var(ncid, "v2", PIO_INT, 3, &dimid[0], &varid);
-//     PIOc_enddef(ncid);
-// 
-//     //  ------ variable v1 -----
-// 
-//     // decomposition
-//     elements_per_pe = dim_len[0] / local_.size();
-//     compdof.resize(elements_per_pe);
-// 
-//     for (int i = 0; i < elements_per_pe; i++)
-//         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // scorpio's compdof starts at 1, not 0
-// 
-//     PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
-// 
-//     // write the data
-//     std::vector<int> v1(elements_per_pe);
-//     for (int i = 0; i < elements_per_pe; i++)
-//         v1[i] = local_.rank() * elements_per_pe + i;
-//     PIOc_write_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, &v1[0], NULL);
-// 
-//     PIOc_freedecomp(iosysid, ioid);
-// 
-//     // -------- v2 --------
-// 
-//     // decomposition
-//     // even though it's a 3d dataspace, time is taken separately, and the decomposition is the
-//     // remaining 2d dimensions
-//     elements_per_pe = dim_len[1] * dim_len[2] / local_.size();
-//     compdof.resize(elements_per_pe);
-// 
-//     for (int i = 0; i < elements_per_pe; i++)
-//         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
-// 
-//     // starting dim_len at index 1 because index 0 is the time step
-//     PIOc_InitDecomp(iosysid, PIO_DOUBLE, 2, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
-// 
-//     // write the data
-//     std::vector<double> v2(elements_per_pe);
-//     for (auto t = 0; t < dim_len[0]; t++)      // for all timesteps
-//     {
-//         for (int i = 0; i < elements_per_pe; i++)
-//             v2[i] = t * elements_per_pe * local_.size() + local_.rank() * elements_per_pe + i;;
-//         PIOc_setframe(ncid, varid, t);
-//         PIOc_write_darray(ncid, varid, ioid, (PIO_Offset)elements_per_pe, &v2[0], NULL);
-//     }
-// 
-//     PIOc_freedecomp(iosysid, ioid);
-// 
-//     // debug
-//     fmt::print(stderr, "*** producer before closing file ***\n");
+    // variable sizes
+    dim_len[0]  = 3;
+    dim_len[1]  = 128;
+    dim_len[2]  = 128;
+
+    // define variables
+    PIOc_def_dim(ncid, "s", (PIO_Offset)dim_len[1], &dimid_v1[0]);
+    PIOc_def_dim(ncid, "t", (PIO_Offset)dim_len[0], &dimid_v2[0]);
+    PIOc_def_dim(ncid, "x", (PIO_Offset)dim_len[1], &dimid_v2[1]);
+    PIOc_def_dim(ncid, "y", (PIO_Offset)dim_len[2], &dimid_v2[2]);
+    PIOc_def_var(ncid, "v1", PIO_INT, 1, &dimid_v1[0], &varid1);
+    PIOc_def_var(ncid, "v2", PIO_DOUBLE, 3, &dimid_v2[0], &varid2);
+    PIOc_enddef(ncid);
+
+    //  ------ variable v1 -----
+
+    // decomposition
+    elements_per_pe = dim_len[1] / local_.size();
+    compdof.resize(elements_per_pe);
+    for (int i = 0; i < elements_per_pe; i++)
+        compdof[i] = local_.rank() * elements_per_pe + i + 1;       // scorpio's compdof starts at 1, not 0
+    PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+
+    // write the data
+    std::vector<int> v1(elements_per_pe);
+    for (int i = 0; i < elements_per_pe; i++)
+        v1[i] = local_.rank() * elements_per_pe + i;
+    PIOc_write_darray(ncid, varid1, ioid, (PIO_Offset)elements_per_pe, &v1[0], NULL);
+
+    // -------- v2 --------
+
+    // decomposition
+    // even though it's a 3d dataspace, time is taken separately, and the decomposition is the
+    // remaining 2d dimensions
+    elements_per_pe = dim_len[1] * dim_len[2] / local_.size();
+    compdof.resize(elements_per_pe);
+
+    for (int i = 0; i < elements_per_pe; i++)
+        compdof[i] = local_.rank() * elements_per_pe + i + 1;       // scorpio's compdof starts at 1, not 0
+
+    // starting dim_len at index 1 because index 0 is the time step
+    PIOc_InitDecomp(iosysid, PIO_DOUBLE, 2, &dim_len[1], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+
+    // write the data
+    std::vector<double> v2(elements_per_pe);
+    for (auto t = 0; t < dim_len[0]; t++)      // for all timesteps
+    {
+        for (int i = 0; i < elements_per_pe; i++)
+            v2[i] = t * elements_per_pe * local_.size() + local_.rank() * elements_per_pe + i;;
+        PIOc_setframe(ncid, varid2, t);
+        PIOc_write_darray(ncid, varid2, ioid, (PIO_Offset)elements_per_pe, &v2[0], NULL);
+    }
+
+    PIOc_sync(ncid);                        // flush everything
 
     // clean up
     PIOc_closefile(ncid);
+    PIOc_freedecomp(iosysid, ioid);
     PIOc_finalize(iosysid);
 
     // debug
