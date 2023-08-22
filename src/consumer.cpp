@@ -5,6 +5,8 @@
 #include <netcdf.h>
 #include <pio.h>
 
+#include "fmt/format.h"
+
 #define MAX_DIMS 10
 
 herr_t fail_on_hdf5_error(hid_t stack_id, void*)
@@ -51,6 +53,10 @@ void consumer_f (
     std::vector<int>        dim_len(MAX_DIMS);
     std::vector<int>        dimid_v1(MAX_DIMS);
     std::vector<int>        dimid_v2(MAX_DIMS);
+    int                     nvars;                  // number of variables
+    int                     ngatts;                 // number of global attributes
+    int                     unlimdimid;             // id of unlimited dimension
+
 
     // debug
     fmt::print(stderr, "consumer: local comm rank {} size {}\n", local_.rank(), local_.size());
@@ -99,46 +105,73 @@ void consumer_f (
     // open file for reading
     PIOc_openfile(iosysid, &ncid, &format, "example1.nc", PIO_NOWRITE);
 
+    // read the metadata
+
+    // global metadata
+    PIOc_inq(ncid, &ndims, &nvars, &ngatts, &unlimdimid);
+    fmt::print(stderr, "*** consumer metadata: ndims {} nvars {} ngatts {} unlimdimid {} ***\n",
+            ndims, nvars, ngatts, unlimdimid);
+
+    // dimensions
+    char dimname[256];
+    PIO_Offset dimlen;
+    for (int d = 0; d < ndims; d++)
+    {
+        PIOc_inq_dim(ncid, d, dimname, &dimlen);
+        fmt::print(stderr, "*** consumer dim {} dim_name {} dimlen {} ***\n", d, dimname, dimlen);
+    }
+
+    // variable info
+    char varname[256];
+    std::vector<int>        dimids(MAX_DIMS);       // dimension ids
+    int                     natts;                  // number of variable attributes
+    nc_type                 dtype;                  // netCDF data type of this variable
+    PIOc_inq_var(ncid, 0, varname, 256, &dtype, &ndims, &dimids[0], &natts);
+    fmt::print(stderr, "*** consumer varname {} dtype {} NC_DOUBLE {} ndims {} dimids [{}] natts {}\n",
+            varname, dtype, NC_DOUBLE, ndims, fmt::join(dimids, ","), natts);
+
     // variable sizes
     int ntime_steps = 3;
     dim_len[0]  = 128;
-    dim_len[1]  = 128;
+    dim_len[1]  = 256;
 
-    //  ------ variable v1 -----
+    // read variables
 
-    // decomposition
-    elements_per_pe = dim_len[0] / local_.size();
-    compdof.resize(elements_per_pe);
-    for (int i = 0; i < elements_per_pe; i++)
-        compdof[i] = local_.rank() * elements_per_pe + i + 1;        // scorpio's compdof starts at 1, not 0
-    PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
-
-    // read the metadata (get variable ID)
-    PIOc_inq_varid(ncid, "v1", &varid1);
-
-    // debug
-    fmt::print(stderr, "*** consumer after inquiring variable ID {} for v1 ***\n", varid1);
-
-    // read the data
-    std::vector<int> v1(elements_per_pe);
-    PIOc_read_darray(ncid, varid1, ioid, (PIO_Offset)elements_per_pe, &v1[0]);
-    // check the data values
-    for (int i = 0; i < elements_per_pe; i++)
-    {
-        if (v1[i] != local_.rank() * elements_per_pe + i)
-        {
-            fmt::print(stderr, "*** consumer error: v1[{}] = {} which should be {} ***\n", i, v1[i], local_.rank() * elements_per_pe + i);
-            abort();
-        }
-    }
-
-    // -------- v2 --------
+//     //  ------ variable v1 -----
+// 
+//     // decomposition
+//     elements_per_pe = dim_len[0] / local_.size();
+//     compdof.resize(elements_per_pe);
+//     for (int i = 0; i < elements_per_pe; i++)
+//         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // scorpio's compdof starts at 1, not 0
+//     PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+// 
+//     // read the metadata (get variable ID)
+//     PIOc_inq_varid(ncid, "v1", &varid1);
+// 
+//     // debug
+//     fmt::print(stderr, "*** consumer after inquiring variable ID {} for v1 ***\n", varid1);
+// 
+//     // read the data
+//     std::vector<int> v1(elements_per_pe);
+//     PIOc_read_darray(ncid, varid1, ioid, (PIO_Offset)elements_per_pe, &v1[0]);
+//     // check the data values
+//     for (int i = 0; i < elements_per_pe; i++)
+//     {
+//         if (v1[i] != local_.rank() * elements_per_pe + i)
+//         {
+//             fmt::print(stderr, "*** consumer error: v1[{}] = {} which should be {} ***\n", i, v1[i], local_.rank() * elements_per_pe + i);
+//             abort();
+//         }
+//     }
+// 
+    // -------- variable v2 --------
 
     // decomposition
     elements_per_pe = dim_len[0] * dim_len[1] / local_.size();
     compdof.resize(elements_per_pe);
     for (int i = 0; i < elements_per_pe; i++)
-        compdof[i] = local_.rank() * elements_per_pe + i + 1;        // adding 1 fixes a scorpio bug I don't understand
+        compdof[i] = local_.rank() * elements_per_pe + i + 1;        // scorpio's compdof starts at 1, not 0
     PIOc_InitDecomp(iosysid, PIO_DOUBLE, 2, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
 
     // read the metadata (get variable ID)

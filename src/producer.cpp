@@ -91,34 +91,42 @@ void producer_f (
     // variable sizes
     int ntime_steps = 3;
     dim_len[0]  = 128;
-    dim_len[1]  = 128;
+    dim_len[1]  = 256;
 
     // define variables
-    PIOc_def_dim(ncid, "s", (PIO_Offset)dim_len[0], &dimid_v1[0]);
-//     PIOc_def_dim(ncid, "t", (PIO_Offset)ntime_steps, &dimid_v2[0]);
-    PIOc_def_dim(ncid, "t", NC_UNLIMITED, &dimid_v2[0]);
+
+//  // ----- variable v1 -----
+
+//     PIOc_def_dim(ncid, "s", (PIO_Offset)dim_len[0], &dimid_v1[0]);
+//     PIOc_def_var(ncid, "v1", PIO_INT, 1, &dimid_v1[0], &varid1);
+
+    // ----- variable v2 -----
+
+    PIOc_def_dim(ncid, "t", (PIO_Offset)ntime_steps, &dimid_v2[0]);
+//     PIOc_def_dim(ncid, "t", NC_UNLIMITED, &dimid_v2[0]);
     PIOc_def_dim(ncid, "x", (PIO_Offset)dim_len[0], &dimid_v2[1]);
     PIOc_def_dim(ncid, "y", (PIO_Offset)dim_len[1], &dimid_v2[2]);
-    PIOc_def_var(ncid, "v1", PIO_INT, 1, &dimid_v1[0], &varid1);
     PIOc_def_var(ncid, "v2", PIO_DOUBLE, 3, &dimid_v2[0], &varid2);
     PIOc_enddef(ncid);
 
-    //  ------ variable v1 -----
+    // write variables
 
-    // decomposition
-    elements_per_pe = dim_len[0] / local_.size();
-    compdof.resize(elements_per_pe);
-    for (int i = 0; i < elements_per_pe; i++)
-        compdof[i] = local_.rank() * elements_per_pe + i + 1;       // scorpio's compdof starts at 1, not 0
-    PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
-
-    // write the data
-    std::vector<int> v1(elements_per_pe);
-    for (int i = 0; i < elements_per_pe; i++)
-        v1[i] = local_.rank() * elements_per_pe + i;
-    PIOc_write_darray(ncid, varid1, ioid, (PIO_Offset)elements_per_pe, &v1[0], NULL);
-
-    // -------- v2 --------
+//     //  ------ variable v1 -----
+// 
+//     // decomposition
+//     elements_per_pe = dim_len[0] / local_.size();
+//     compdof.resize(elements_per_pe);
+//     for (int i = 0; i < elements_per_pe; i++)
+//         compdof[i] = local_.rank() * elements_per_pe + i + 1;       // scorpio's compdof starts at 1, not 0
+//     PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+// 
+//     // write the data
+//     std::vector<int> v1(elements_per_pe);
+//     for (int i = 0; i < elements_per_pe; i++)
+//         v1[i] = local_.rank() * elements_per_pe + i;
+//     PIOc_write_darray(ncid, varid1, ioid, (PIO_Offset)elements_per_pe, &v1[0], NULL);
+// 
+    // -------- variable v2 --------
 
     // decomposition
     elements_per_pe = dim_len[0] * dim_len[1] / local_.size();
