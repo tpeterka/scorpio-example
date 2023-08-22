@@ -18,7 +18,7 @@ class ScorpioExample(CMakePackage):
 
     depends_on('mpich')
     depends_on('mpas-o-scorpio+hdf5', type='link')
-    depends_on('hdf5+mpi+hl@1.14.1 ^mpich', type='link')
+    depends_on('hdf5+mpi+hl@1.14 ^mpich', type='link')
     depends_on('netcdf-c+mpi', type='link')
     depends_on('parallel-netcdf', type='link')
     depends_on('lowfive', type='link')
