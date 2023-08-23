@@ -7,12 +7,6 @@
 
 #define MAX_DIMS 10
 
-// #define NDIM 1
-// #define DIM_LEN 1024
-// #define DIM_NAME "x"
-// #define VAR_NAME "foo"
-// #define START_DATA_VAL 100
-
 extern "C"
 {
 void consumer_f (
@@ -48,21 +42,6 @@ void consumer_f (
     std::vector<PIO_Offset> compdof;
     std::vector<int>        dim_len(MAX_DIMS);
 
-//     // PIO defs
-//     int my_rank = local_.rank();
-//     int ntasks  = local_.size();
-//     int ioproc_stride = 1;
-//     int ioproc_start = 0;
-//     int iosysid;
-//     int ncid;
-//     int format = PIO_IOTYPE_NETCDF4P;
-//     int *buffer = NULL;
-//     PIO_Offset elements_per_pe;
-//     PIO_Offset *compdof = NULL;
-//     int dim_len[1] = {DIM_LEN};
-//     int ioid;
-//     int varid = -1;
-
     // debug
     fmt::print(stderr, "consumer: local comm rank {} size {}\n", local_.rank(), local_.size());
 
@@ -77,14 +56,29 @@ void consumer_f (
     hid_t plist;
 
     if (shared)                     // single process, MetadataVOL test
+    {
+
+#ifdef  LOWFIVE_PATH
+
         fmt::print(stderr, "consumer: using shared mode MetadataVOL plugin created by prod-con\n");
+
+#endif
+
+    }
     else                            // normal multiprocess, DistMetadataVOL plugin
     {
+
+#ifdef  LOWFIVE_PATH
+
         l5::DistMetadataVOL& vol_plugin = l5::DistMetadataVOL::create_DistMetadataVOL(local, intercomms);
         plist = H5Pcreate(H5P_FILE_ACCESS);
 
         if (passthru)
             H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
+
+#endif
+
+#ifdef  LOWFIVE_PATH
 
         l5::H5VOLProperty vol_prop(vol_plugin);
         if (!getenv("HDF5_VOL_CONNECTOR"))
@@ -96,6 +90,9 @@ void consumer_f (
         if (metadata)
             vol_plugin.set_memory("example1.nc", "*");
         vol_plugin.set_intercomm("example1.nc", "*", 0);
+
+#endif
+
     }
 
     // init PIO

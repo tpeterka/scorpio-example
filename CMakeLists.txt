@@ -39,26 +39,28 @@ option                      (FMT_INSTALL "" OFF)
 add_subdirectory            (ext/fmt)
 set                         (libraries ${libraries} fmt::fmt)
 
+# removed LowFive until it's updated to hdf5-1.14
+#
 # LowFive
-if                          (NOT DEFINED LOWFIVE_PATH AND DEFINED ENV{LOWFIVE_PATH})
-    set                     (LOWFIVE_PATH $ENV{LOWFIVE_PATH})
-endif                       ()
-
-if                          (LOWFIVE_PATH)
-    message                 ("Found LOWFIVE_PATH")
-    set                     (LOWFIVE_LIBRARY ${LOWFIVE_PATH}/lib/liblowfive.so)
-    set                     (LOWFIVE_DIST_LIBRARY ${LOWFIVE_PATH}/lib/liblowfive-dist.a)
-    set                     (LOWFIVE_INCLUDE_DIR ${LOWFIVE_PATH}/include)
-else                        ()
-    message                 ("Looking for LowFive")
-    find_package            (LowFive REQUIRED)
-endif                       ()
-    message                 ("LOWFIVE_LIBRARY = ${LOWFIVE_LIBRARY}")
-    message                 ("LOWFIVE_DIST_LIBRARY = ${LOWFIVE_DIST_LIBRARY}")
-    message                 ("LOWFIVE_INCLUDE_DIR = ${LOWFIVE_INCLUDE_DIR}")
-set                         (libraries ${libraries} ${LOWFIVE_LIBRARY} ${LOWFIVE_DIST_LIBRARY})
-include_directories         (SYSTEM ${LOWFIVE_INCLUDE_DIR}
-                            SYSTEM ${LOWFIVE_INCLUDE_DIR}/diy)
+# if                          (NOT DEFINED LOWFIVE_PATH AND DEFINED ENV{LOWFIVE_PATH})
+#     set                     (LOWFIVE_PATH $ENV{LOWFIVE_PATH})
+# endif                       ()
+# 
+# if                          (LOWFIVE_PATH)
+#     message                 ("Found LOWFIVE_PATH")
+#     set                     (LOWFIVE_LIBRARY ${LOWFIVE_PATH}/lib/liblowfive.so)
+#     set                     (LOWFIVE_DIST_LIBRARY ${LOWFIVE_PATH}/lib/liblowfive-dist.a)
+#     set                     (LOWFIVE_INCLUDE_DIR ${LOWFIVE_PATH}/include)
+# else                        ()
+#     message                 ("Looking for LowFive")
+#     find_package            (LowFive REQUIRED)
+# endif                       ()
+#     message                 ("LOWFIVE_LIBRARY = ${LOWFIVE_LIBRARY}")
+#     message                 ("LOWFIVE_DIST_LIBRARY = ${LOWFIVE_DIST_LIBRARY}")
+#     message                 ("LOWFIVE_INCLUDE_DIR = ${LOWFIVE_INCLUDE_DIR}")
+# set                         (libraries ${libraries} ${LOWFIVE_LIBRARY} ${LOWFIVE_DIST_LIBRARY})
+# include_directories         (SYSTEM ${LOWFIVE_INCLUDE_DIR}
+#                             SYSTEM ${LOWFIVE_INCLUDE_DIR}/diy)
 
 # HDF5
 if                          (NOT DEFINED HDF5_PATH AND DEFINED ENV{HDF5_PATH})

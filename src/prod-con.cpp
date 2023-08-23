@@ -3,8 +3,6 @@
 #include    <diy/assigner.hpp>
 #include    "opts.h"
 
-#include    <lowfive/log.hpp>
-
 #include    <dlfcn.h>
 
 #include    "prod-con.hpp"
@@ -53,8 +51,12 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+#ifdef  LOWFIVE_PATH
+
     // lowfive logging
-    LowFive::create_logger("trace");
+    l5::create_logger("trace");
+
+#endif
 
     int producer_ranks = world.size() * prod_frac;
     bool producer           = world.rank() < producer_ranks;
@@ -121,12 +123,20 @@ int main(int argc, char* argv[])
     hid_t plist;
     if (shared)
     {
+
+#ifdef LOWFIVE_PATH
+
         l5::MetadataVOL& shared_vol_plugin = l5::MetadataVOL::create_MetadataVOL();
         fmt::print(stderr, "prod-con: creating new shared mode MetadataVOL plugin\n");
+
+#endif
+
         plist = H5Pcreate(H5P_FILE_ACCESS);
 
         if (passthru)
             H5Pset_fapl_mpio(plist, world, MPI_INFO_NULL);
+
+#ifdef LOWFIVE_PATH
 
         l5::H5VOLProperty vol_prop(shared_vol_plugin);
         if (!getenv("HDF5_VOL_CONNECTOR"))
@@ -138,6 +148,9 @@ int main(int argc, char* argv[])
         if (metadata)
             shared_vol_plugin.set_memory("example1.nc", "*");
         shared_vol_plugin.set_keep(true);
+
+#endif
+
     }
 
     // declare lambdas for the tasks
