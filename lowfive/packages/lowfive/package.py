@@ -27,7 +27,7 @@ class Lowfive(CMakePackage):
     variant("python", default=True, description="Install Python bindings")
 
     depends_on('mpich')
-    depends_on('hdf5+mpi+hl@1.14.1 ^mpich', type='link')
+    depends_on('hdf5+mpi+hl', type='link')
 
     extends("python", when="+python")       # brings pylowfive into PYTHONPATH
     depends_on("py-mpi4py", when="+python", type=("build", "run"))
