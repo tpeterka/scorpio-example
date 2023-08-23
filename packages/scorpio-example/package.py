@@ -21,7 +21,7 @@ class ScorpioExample(CMakePackage):
     depends_on('hdf5+mpi+hl', type='link')
     depends_on('netcdf-c+mpi', type='link')
     depends_on('parallel-netcdf', type='link')
-    depends_on('lowfive', type='link')
+#     depends_on('lowfive', type='link')
 
     def cmake_args(self):
         args = ['-DCMAKE_C_COMPILER=%s' % self.spec['mpich'].mpicc,
@@ -29,6 +29,6 @@ class ScorpioExample(CMakePackage):
                 '-DBUILD_SHARED_LIBS=false',
                 '-DNETCDF_PATH=%s' % self.spec['netcdf-c'].prefix,
                 '-DPNETCDF_PATH=%s' % self.spec['parallel-netcdf'].prefix,
-                '-DLOWFIVE_PATH=%s' % self.spec['lowfive'].prefix,
+#                 '-DLOWFIVE_PATH=%s' % self.spec['lowfive'].prefix,
                 '-DSCORPIO_PATH=%s' % self.spec['mpas-o-scorpio'].prefix]
         return args
