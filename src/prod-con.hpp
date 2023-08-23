@@ -7,6 +7,8 @@
 
 #include    <fmt/format.h>
 
+#include    <hdf5.h>
+
 #ifdef      LOWFIVE_PATH
 
 #include    <lowfive/vol-metadata.hpp>
