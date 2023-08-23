@@ -84,12 +84,13 @@ void consumer_f (
 #ifdef  LOWFIVE_PATH
 
         l5::DistMetadataVOL& vol_plugin = l5::DistMetadataVOL::create_DistMetadataVOL(local, intercomms);
+
+#endif
+
         plist = H5Pcreate(H5P_FILE_ACCESS);
 
         if (passthru)
             H5Pset_fapl_mpio(plist, local, MPI_INFO_NULL);
-
-#endif
 
 #ifdef  LOWFIVE_PATH
 
