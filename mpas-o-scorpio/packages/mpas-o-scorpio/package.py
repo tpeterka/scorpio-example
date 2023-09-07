@@ -16,9 +16,9 @@ class MpasOScorpio(CMakePackage):
     version('master', branch='master')
 
     depends_on('mpich@4')
-    depends_on('hdf5+mpi+hl@1.12.1 ^mpich', type='link')
-    depends_on('netcdf-c@4.8.1 +mpi ^mpich', type='link')
-    depends_on('parallel-netcdf@1.12.2 -shared', type='link')
+    depends_on('hdf5+mpi+hl', type='link')
+    depends_on('netcdf-c+mpi', type='link')
+    depends_on('parallel-netcdf', type='link')
 
     variant("netcdf", default=True, description="Build with NetCDF")
     variant("hdf5", default=False, description="Build with HDF5")

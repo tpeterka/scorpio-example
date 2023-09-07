@@ -20,19 +20,9 @@ spack env create $SPACKENV $YAML
 echo "activating spack environment"
 spack env activate $SPACKENV
 
-# add scorpio in develop mode
-spack develop mpas-o-scorpio+hdf5@master
-spack add mpas-o-scorpio+hdf5
-
 # add scorpio-example in develop mode
 spack develop scorpio-example@master
 spack add scorpio-example
-
-# add netcdf in develop mode
-spack develop netcdf-c@4.8.1+mpi
-spack add netcdf-c@4.8.1+mpi cflags='-g'
-# spack develop netcdf-c@4.8.1+mpi
-# spack add netcdf-c@4.8.1+mpi
 
 # install everything in environment
 echo "installing dependencies in environment"

@@ -15,18 +15,12 @@ class Lowfive(CMakePackage):
     git      = "https://github.com/diatomic/LowFive.git"
     version('master', branch='master')
 
-    # my local repo (for debugging)
-#     homepage = "/home/tpeterka/software/LowFive"
-#     url      = "/home/tpeterka/software/LowFive"
-#     git      = "/home/tpeterka/software/LowFive"
-#     version('tom-dev', branch='tom-dev')
-
     variant("examples", default=False, description="Install the examples")
     variant("auto_load", default=True, description="Set LowFive environment variables")
     variant("python", default=True, description="Install Python bindings")
 
     depends_on('mpich')
-    depends_on('hdf5+mpi+hl@1.12.1 ^mpich', type='link')
+    depends_on('hdf5+mpi+hl', type='link')
 
     extends("python", when="+python")       # brings pylowfive into PYTHONPATH
     depends_on("py-mpi4py", when="+python", type=("build", "run"))
