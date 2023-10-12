@@ -28,6 +28,7 @@ Because of a quirk in the way that SCORPIO I/O works, there needs to be an `exam
 will complain. This means that you need to run the example once in passthru mode, and replace the file anytime it gets
 deleted, e.g., if the binary directory is re-installed.
 ```
+cd $SCORPIO_EXAMPLE_PATH/bin
 mpiexec -n 1 ./prod-con -m 0 -f 1
 ```
 
