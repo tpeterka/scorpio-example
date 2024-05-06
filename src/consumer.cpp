@@ -137,34 +137,34 @@ void consumer_f (
 
     // read variables
 
-//     //  ------ variable v1 -----
-// 
-//     // decomposition
-//     elements_per_pe = dim_len[0] / local_.size();
-//     compdof.resize(elements_per_pe);
-//     for (int i = 0; i < elements_per_pe; i++)
-//         compdof[i] = local_.rank() * elements_per_pe + i + 1;        // scorpio's compdof starts at 1, not 0
-//     PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
-// 
-//     // read the metadata (get variable ID)
-//     PIOc_inq_varid(ncid, "v1", &varid1);
-// 
-//     // debug
-//     fmt::print(stderr, "*** consumer after inquiring variable ID {} for v1 ***\n", varid1);
-// 
-//     // read the data
-//     std::vector<int> v1(elements_per_pe);
-//     PIOc_read_darray(ncid, varid1, ioid, (PIO_Offset)elements_per_pe, &v1[0]);
-//     // check the data values
-//     for (int i = 0; i < elements_per_pe; i++)
-//     {
-//         if (v1[i] != local_.rank() * elements_per_pe + i)
-//         {
-//             fmt::print(stderr, "*** consumer error: v1[{}] = {} which should be {} ***\n", i, v1[i], local_.rank() * elements_per_pe + i);
-//             abort();
-//         }
-//     }
-// 
+    //  ------ variable v1 -----
+
+    // decomposition
+    elements_per_pe = dim_len[0] / local_.size();
+    compdof.resize(elements_per_pe);
+    for (int i = 0; i < elements_per_pe; i++)
+        compdof[i] = local_.rank() * elements_per_pe + i + 1;        // scorpio's compdof starts at 1, not 0
+    PIOc_InitDecomp(iosysid, PIO_INT, 1, &dim_len[0], (PIO_Offset)elements_per_pe, &compdof[0], &ioid, NULL, NULL, NULL);
+
+    // read the metadata (get variable ID)
+    PIOc_inq_varid(ncid, "v1", &varid1);
+
+    // debug
+    fmt::print(stderr, "*** consumer after inquiring variable ID {} for v1 ***\n", varid1);
+
+    // read the data
+    std::vector<int> v1(elements_per_pe);
+    PIOc_read_darray(ncid, varid1, ioid, (PIO_Offset)elements_per_pe, &v1[0]);
+    // check the data values
+    for (int i = 0; i < elements_per_pe; i++)
+    {
+        if (v1[i] != local_.rank() * elements_per_pe + i)
+        {
+            fmt::print(stderr, "*** consumer error: v1[{}] = {} which should be {} ***\n", i, v1[i], local_.rank() * elements_per_pe + i);
+            abort();
+        }
+    }
+
     // -------- variable v2 --------
 
     // decomposition
