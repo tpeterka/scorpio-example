@@ -3,13 +3,6 @@
 export SPACKENV=scorpio-example-env
 export YAML=$PWD/env.yaml
 
-# add mpas-o-scorpio and scorpio-example spack repos
-echo "adding custom spack repos for scorpio and for scorpio-example"
-spack repo add mpas-o-scorpio > /dev/null 2>&1
-spack repo add . > /dev/null 2>&1
-echo "adding spack repo for lowfive"
-spack repo add lowfive > /dev/null 2>&1
-
 # create spack environment
 echo "creating spack environment $SPACKENV"
 spack env deactivate > /dev/null 2>&1
@@ -20,7 +13,9 @@ spack env create $SPACKENV $YAML
 echo "activating spack environment"
 spack env activate $SPACKENV
 
-# add scorpio-example in develop mode
+# spack develop lowfive@master build_type=Debug
+spack add lowfive
+
 spack develop scorpio-example@master
 spack add scorpio-example
 
