@@ -13,7 +13,7 @@ spack env create $SPACKENV $YAML
 echo "activating spack environment"
 spack env activate $SPACKENV
 
-# spack develop lowfive@master build_type=Debug
+spack develop lowfive@master build_type=Debug
 spack add lowfive
 
 spack develop scorpio-example@master
