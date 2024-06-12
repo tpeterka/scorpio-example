@@ -99,6 +99,7 @@ void producer_f (
 
     PIOc_def_dim(ncid, "s", (PIO_Offset)dim_len[0], &dimid_v1[0]);
     PIOc_def_var(ncid, "v1", PIO_INT, 1, &dimid_v1[0], &varid1);
+    fmt::print(stderr, "producer varid1 = {} dimid_v1 = [{}]\n", varid1, dimid_v1[0]);
 
     // ----- variable v2 -----
 
@@ -107,6 +108,7 @@ void producer_f (
     PIOc_def_dim(ncid, "x", (PIO_Offset)dim_len[0], &dimid_v2[1]);
     PIOc_def_dim(ncid, "y", (PIO_Offset)dim_len[1], &dimid_v2[2]);
     PIOc_def_var(ncid, "v2", PIO_DOUBLE, 3, &dimid_v2[0], &varid2);
+    fmt::print(stderr, "producer varid2 = {} dimid_v2 = [{}, {}]\n", varid2, dimid_v2[0], dimid_v2[1]);
     PIOc_enddef(ncid);
 
     // write variables

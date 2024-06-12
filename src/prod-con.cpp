@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
     }
 
     // lowfive logging
-    LowFive::create_logger("trace");
+//     LowFive::create_logger("trace");
 
     int producer_ranks = world.size() * prod_frac;
     bool producer           = world.rank() < producer_ranks;
