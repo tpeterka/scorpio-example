@@ -193,10 +193,6 @@ void consumer_f (
         }
     }
 
-    // debug
-    fmt::print(stderr, "*** consumer printing metadata ***\n");
-    vol_plugin.print_files();
-
     // clean up
     PIOc_closefile(ncid);
     PIOc_freedecomp(iosysid, ioid);
