@@ -16,6 +16,12 @@ spack env activate $SPACKENV
 spack develop lowfive@master build_type=Debug
 spack add lowfive
 
+spack develop netcdf-c@main+mpi build_system=cmake build_type=Debug
+spack add netcdf-c@main+mpi
+
+spack develop mpas-o-scorpio@master+hdf5 build_type=Debug
+spack add mpas-o-scorpio+hdf5
+
 spack develop scorpio-example@master
 spack add scorpio-example
 
@@ -23,27 +29,5 @@ spack add scorpio-example
 echo "installing dependencies in environment"
 spack install
 
-# reset the environment (workaround for spack behavior)
 spack env deactivate
-spack env activate $SPACKENV
-
-# set build flags
-echo "setting flags for building scorpio-example"
-export NETCDF_PATH=`spack location -i netcdf-c`
-export PNETCDF_PATH=`spack location -i parallel-netcdf`
-export SCORPIO_PATH=`spack location -i mpas-o-scorpio`
-export LOWFIVE_PATH=`spack location -i lowfive`
-export SCORPIO_EXAMPLE_PATH=`spack location -i scorpio-example`
-export HENSON_PATH=`spack location -i henson`
-
-# set LD_LIBRARY_PATH
-echo "setting flags for running scorpio-example"
-export LD_LIBRARY_PATH=$NETCDF_PATH/lib:$LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=$PNETCDF_PATH/lib:$LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=$SCORPIO_PATH/lib:$LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=$LOWFIVE_PATH/lib:$LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=$HENSON_PATH/lib:$LD_LIBRARY_PATH
-
-export HDF5_PLUGIN_PATH=$LOWFIVE_PATH/lib
-export HDF5_VOL_CONNECTOR="lowfive under_vol=0;under_info={};"
 

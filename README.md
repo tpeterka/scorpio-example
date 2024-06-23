@@ -39,6 +39,7 @@ spack repo add /path/to/scorpio-example
 ```
 cd /path/to/scorpio-example
 source ./create-env.sh     # requires being in the same directory to work properly
+source ./load-env.sh
 ```
 
 ### Subsequent times: load the Spack environment
